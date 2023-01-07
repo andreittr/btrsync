@@ -1,0 +1,19 @@
+/*
+ * Copyright © 2023 Andrei Tatar <andrei.ttr@gmail.com>
+ *
+ * SPDX-License-Identifier: CC-BY-SA-4.0
+ */
+
+table.docutils {
+  margin-left: unset;
+}
+
+dl.method {
+  margin-top: 1em;
+}
+
+dl.class,
+dl.function {
+  margin-top: 2em;
+}
+

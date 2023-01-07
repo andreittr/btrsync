@@ -1,0 +1,37 @@
+# Copyright © 2023 Andrei Tatar <andrei.ttr@gmail.com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "btrsync"
+dynamic = ["version"]
+description = "Replicate btrfs subvolumes, handling Copy-on-Write (COW) relationships and incremental transfers automatically."
+readme = "README-pypi.md"
+authors = [
+	{name = "Andrei Tatar"},
+	{email = "andrei.ttr@gmail.com"}
+]
+requires-python = ">=3.9"
+license = {text = "GPL-3.0-or-later"}
+classifiers = [
+	"Programming Language :: Python :: 3",
+	"License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+	"Operating System :: POSIX :: Linux",
+	"Topic :: System",
+	"Topic :: System :: Systems Administration",
+	"Topic :: System :: Archiving",
+	"Topic :: System :: Archiving :: Backup",
+	"Topic :: System :: Archiving :: Mirroring",
+]
+
+[project.urls]
+Home-page = "https://github.com/andreittr/btrsync"
+Documentation = "https://btrsync.readthedocs.io"
+Issue-tracker = "https://github.com/andreittr/btrsync/issues"
+
+[project.scripts]
+btrsync = "btrsync.cli:main"
