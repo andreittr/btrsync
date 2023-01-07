@@ -1,0 +1,5 @@
+# Copyright 2023 Andrei Tatar <andrei.ttr@gmail.com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+include README-pypi.md
