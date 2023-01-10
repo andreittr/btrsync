@@ -33,17 +33,19 @@ class LocalBtrfsRoot(BtrfsRoot):
 		``'strict'`` includes only subvolumes directly contained in `rootpath`, and
 		``'isolated'`` behaves like ``'strict'``, but also excludes other subvolumes from computing parentage
 	:param readonly: if :const:`True`, list only readonly subvolumes
+	:param create_recvpath: if :const:`True`, ensure the `path` passed to :meth:`.receive` exists
 	:raises ValueError: for an invalid value of `scope`
 	"""
 	_SCOPES = ('all', 'strict', 'isolated')
-	def __init__(self, rootpath, *, scope='all', readonly=True):
+	def __init__(self, rootpath, *, scope='all', readonly=True, create_recvpath=False):
 		self.localroot = rootpath
 		if scope not in self._SCOPES:
 			raise ValueError(f"`scope' must be one of {self._SCOPES}")
 		self.scope = scope
 		self.readonly = readonly
+		self.create_recvpath = create_recvpath
 		self._args = ('localroot',)
-		self._kwargs = ('scope', 'readonly')
+		self._kwargs = ('scope', 'readonly', 'create_recvpath')
 		self._isolated = scope == 'isolated'
 		self._strict = scope != 'all'
 		self._fsroot = None
@@ -146,6 +148,8 @@ class LocalBtrfsRoot(BtrfsRoot):
 		tpath = self._localpath(path)
 		cmd = btrfs.cmd.receive(tpath)
 		await self._chk()
+		if self.create_recvpath:
+			await self._run_checked(util.Cmd('mkdir', ['-p', tpath]))
 		task = asyncio.create_task(self._ex(cmd, stdin=fildes.fd, stdout=cmdex.PIPE, stderr=cmdex.PIPE))
 		fildes.closed = True
 		p, r = await task
