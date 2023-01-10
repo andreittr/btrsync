@@ -376,9 +376,10 @@ def process_args(cliargs):
 
 	srootopts = {'sudo': cliargs.sudo or cliargs.sudo_src}
 	drootopts = {'sudo': cliargs.sudo or cliargs.sudo_dest}
-	rootargs = {}
+	srootargs = {}
 	if cliargs.scope is not None:
-		rootargs['scope'] = cliargs.scope
+		srootargs['scope'] = cliargs.scope
+	drootargs = {'create_recvpath': cliargs.create_destpath}
 
 	return {
 		'srcs': cliargs.src,
@@ -391,9 +392,9 @@ def process_args(cliargs):
 		'syncopts': {'batch': cliargs.batch, 'parallel': cliargs.parallel, 'transfer_existing': cliargs.existing},
 		'transfer': CliTransfer,
 		'srootopts': srootopts,
-		'srootargs': rootargs,
+		'srootargs': srootargs,
 		'drootopts': drootopts,
-		'drootargs': rootargs
+		'drootargs': drootargs
 	}
 
 
@@ -444,6 +445,8 @@ def cli_parser():
 	parser.add_argument('-P', '--parallel', action='store_true',
 	                    help='run independent transfers in parallel')
 
+	parser.add_argument('-c', '--create-destpath', action='store_true',
+	                    help='create the path specified in DESTINATION if it does not exist')
 	parser.add_argument('-s', '--sudo', action='store_true',
 	                    help="use `sudo' for commands, in both source and destination")
 	parser.add_argument('--sudo-src', action='store_true',
