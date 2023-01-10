@@ -374,9 +374,8 @@ def process_args(cliargs):
 			async def report_done(vols, par, src, dst):
 				print(" - Done")
 
-	rootopts = {}
-	if cliargs.sudo:
-		rootopts['sudo'] = cliargs.sudo
+	srootopts = {'sudo': cliargs.sudo or cliargs.sudo_src}
+	drootopts = {'sudo': cliargs.sudo or cliargs.sudo_dest}
 	rootargs = {}
 	if cliargs.scope is not None:
 		rootargs['scope'] = cliargs.scope
@@ -391,9 +390,9 @@ def process_args(cliargs):
 		'syncer': IncrSync if cliargs.incremental_only else sync.BtrSync,
 		'syncopts': {'batch': cliargs.batch, 'parallel': cliargs.parallel, 'transfer_existing': cliargs.existing},
 		'transfer': CliTransfer,
-		'srootopts': rootopts,
+		'srootopts': srootopts,
 		'srootargs': rootargs,
-		'drootopts': rootopts,
+		'drootopts': drootopts,
 		'drootargs': rootargs
 	}
 
@@ -446,7 +445,11 @@ def cli_parser():
 	                    help='run independent transfers in parallel')
 
 	parser.add_argument('-s', '--sudo', action='store_true',
-	                    help="use `sudo' for btrfs commands")
+	                    help="use `sudo' for commands, in both source and destination")
+	parser.add_argument('--sudo-src', action='store_true',
+	                    help="use `sudo' for commands executed in source")
+	parser.add_argument('--sudo-dest', action='store_true',
+	                    help="use `sudo' for commands executed in destination")
 	parser.add_argument('--scope', choices=('all', 'strict', 'isolated'),
 	                    help='''set the scope for subvolume discovery:
 	                    'all' considers all accessible subvolumes,
