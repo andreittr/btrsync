@@ -162,7 +162,11 @@ class Transfer:
 		pass
 
 	async def _try(self, aw, *err_args):
-		"""Try awaiting awaitable `aw`, converting any exceptions to :exc:`asyncio.CancelledError`."""
+		"""
+		Try awaiting awaitable `aw`, converting any exceptions to :exc:`asyncio.CancelledError`.
+
+		Exceptions raised by `aw` will be logged by :meth:`.err`.
+		"""
 		try:
 			return await aw
 		except BaseException as e:
@@ -170,14 +174,23 @@ class Transfer:
 			raise asyncio.CancelledError() from e
 
 	async def _wait_tasks(self, tasks):
-		"""Try waiting for all `tasks`, canceling all upon error."""
+		"""
+		Try waiting for all `tasks`, canceling all upon error.
+
+		Exceptions raised by the tasks will be logged by :meth:`err`.
+		:raises: asyncio.CancelledError if any tasks raise an exception
+		"""
 		try:
-			return await self._try(asyncio.gather(*tasks))
-		except:
+			return await asyncio.gather(*tasks)
+		except BaseException as e:
 			for t in tasks:
-				t.cancel()
-			await asyncio.wait(tasks)
-			raise
+				try:
+					await asyncio.wait_for(t, timeout=0)
+				except TimeoutError:
+					pass
+				except BaseException as ex:
+					self.err(ex)
+			raise asyncio.CancelledError() from e
 
 	@staticmethod
 	def _prepsend(vols, par, src):
