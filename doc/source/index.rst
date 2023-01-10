@@ -69,6 +69,7 @@ Contents
 
 .. toctree::
    :maxdepth: 5
+   :titlesonly:
 
    cli-usage
    api
