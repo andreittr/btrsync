@@ -289,7 +289,8 @@ class CliConfirm:
 		return r
 
 
-async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts, transfer, srootopts, srootargs, drootopts, drootargs):
+async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts,
+                     transfer, transopts, srootopts, srootargs, drootopts, drootargs):
 	"""
 	Perform btrsync from `srcs` to `dst`.
 
@@ -302,6 +303,7 @@ async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts
 	:param syncer: :class:`btrsync.sync.BtrSync`-like class to use for sync
 	:param syncopts: keyword arguments to pass to `syncer`
 	:param transfer: :class:`btrsync.sync.Transfer`-like class to use for sync
+	:param transopts: keyword arguments to pass to `transfer`
 	:param srootopts: keyword arguments to pass to source btrfs root class factories
 	:param srootargs: keyword arguments to pass to source btrfs root classes
 	:param drootopts: keyword arguments to pass to the destination btrfs root class factory
@@ -311,7 +313,7 @@ async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts
 	stasks = [asyncio.create_task(src_root(s, srootopts, srootargs)) for s in srcs]
 	try:
 		droot, recvpath = await dtask
-		trans = transfer(recvpath=recvpath)
+		trans = transfer(recvpath=recvpath, **transopts)
 		sources = await asyncio.gather(*stasks)
 	except:
 		for t in stasks:
@@ -379,7 +381,7 @@ def process_args(cliargs):
 	srootargs = {}
 	if cliargs.scope is not None:
 		srootargs['scope'] = cliargs.scope
-	drootargs = {'create_recvpath': cliargs.create_destpath}
+	drootargs = {'create_recvpath': cliargs.create_destpath or cliargs.replicate_dirs}
 
 	return {
 		'srcs': cliargs.src,
@@ -391,6 +393,7 @@ def process_args(cliargs):
 		'syncer': IncrSync if cliargs.incremental_only else sync.BtrSync,
 		'syncopts': {'batch': cliargs.batch, 'parallel': cliargs.parallel, 'transfer_existing': cliargs.existing},
 		'transfer': CliTransfer,
+		'transopts': {'replicate_dirs': cliargs.replicate_dirs},
 		'srootopts': srootopts,
 		'srootargs': srootargs,
 		'drootopts': drootopts,
@@ -447,6 +450,12 @@ def cli_parser():
 
 	parser.add_argument('-c', '--create-destpath', action='store_true',
 	                    help='create the path specified in DESTINATION if it does not exist')
+	parser.add_argument('-r', '--replicate-dirs', action='store_true',
+	                    help='''(implies `-c') replicate the directory structure
+	                    containing subvolumes in SOURCEs over to DESTINATION;
+	                    paths are taken relative to the source subvolume root
+	                    and applied on top of DESTINATION''')
+
 	parser.add_argument('-s', '--sudo', action='store_true',
 	                    help="use `sudo' for commands, in both source and destination")
 	parser.add_argument('--sudo-src', action='store_true',

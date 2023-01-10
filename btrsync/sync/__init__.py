@@ -11,6 +11,7 @@ Btrfs subvolume synchronization.
 
 import os
 import asyncio
+import posixpath
 import itertools
 
 from .. import btrfs
@@ -115,8 +116,13 @@ class BtrSync:
 			parents = (parent(vol) for vol in targets)
 			cand = (pair for pair in zip(targets, parents) if check(*pair))
 			if batch:
-				packs = (([x[0] for x in vps], vps[0][1]) for _, vps in
-					util.group(cand, lambda x: x[1]['uuid'] if x[1] is not None else None)[0].items())
+				packs = (
+					([x[0] for x in vps], vps[0][1])
+					for _, vps in util.group(
+						cand,
+						lambda x: (x[1]['uuid'] if x[1] is not None else None, posixpath.dirname(x[0]))
+					)[0].items()
+				)
 			else:
 				packs = (([x[0]], x[1]) for x in cand)
 			transfers = (tf(vols, par) for vols, par in packs)
@@ -145,9 +151,11 @@ class Transfer:
 	Base class implementing a transfer function as required by :meth:`.BtrSync.sync`.
 
 	:param recvpath: the path that transfers are received into
+	:param replicate_dirs: if :const:`True` adapt `recvpath` to recreate the sent volumes' directory structure
 	"""
-	def __init__(self, *, recvpath='.'):
-		self.recvpath = recvpath
+	def __init__(self, *, recvpath='.', replicate_dirs=False):
+		self.recvbase = recvpath
+		self.replicate_dirs = replicate_dirs
 
 	def err(self, e, *args):
 		"""Called on encountering an exception `e`; expected to log the error and return successfully."""
@@ -193,10 +201,19 @@ class Transfer:
 			raise asyncio.CancelledError() from e
 
 	@staticmethod
-	def _prepsend(vols, par, src):
-		volpaths = (v['path'] for v in vols)
+	def _sendpaths(vols, par):
+		volpaths = [v['path'] for v in vols]
 		parent = par['path'] if par is not None else None
-		return src.send(*volpaths, parent=parent)
+		return volpaths, parent
+
+	def _recvpath(self, volpaths):
+		if self.replicate_dirs:
+			voldir = posixpath.dirname(volpaths[0])
+			for vp in volpaths[1:]:
+				assert(posixpath.dirname(vp) == voldir)
+			return posixpath.join(self.recvbase, voldir)
+		else:
+			return self.recvbase
 
 	async def transf(self, vols, par, src, dst):
 		"""
@@ -210,8 +227,9 @@ class Transfer:
 		"""
 		args = (vols, par, src, dst)
 		await self._try(self.report(*args))
-		fd, scoro = await self._try(self._prepsend(vols, par, src), *args)
-		dcoro = dst.receive(fd, self.recvpath)
+		volpaths, parent = self._sendpaths(vols, par)
+		fd, scoro = await self._try(src.send(*volpaths, parent=parent), *args)
+		dcoro = dst.receive(fd, self._recvpath(volpaths))
 		tasks = [asyncio.create_task(x) for x in (scoro, dcoro)]
 		await self._wait_tasks(tasks)
 		await self._try(self.report_done(*args))
@@ -276,14 +294,15 @@ class ProgressTransfer(Transfer):
 
 		await self._try(self.report(*args))
 
-		fd, scoro = await self._try(self._prepsend(vols, par, src), *args)
+		volpaths, parent = self._sendpaths(vols, par)
+		fd, scoro = await self._try(src.send(*volpaths, parent=parent), *args)
 		try:
 			r, w = map(util.FileDesc, os.pipe())
 		except BaseException as e:
 			self.err(e)
 			raise asyncio.CancelledError() from e
 		pump = asyncio.create_task(self._dopump(fd, w, cnt))
-		dtask = asyncio.create_task(dst.receive(r, self.recvpath))
+		dtask = asyncio.create_task(dst.receive(r, self._recvpath(volpaths)))
 		stask = asyncio.create_task(scoro)
 		prog = asyncio.create_task(self.progress(cnt, seq))
 
