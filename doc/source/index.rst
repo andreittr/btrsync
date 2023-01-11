@@ -40,7 +40,7 @@ Installation
 ------------
 btrsync requires Python 3.9 or later.
 
-The easiest way to install is from `PyPI <https://pypi.org>`_ via ``pip``:
+The easiest way to install is from `PyPI <https://pypi.org/project/btrsync/>`_ via ``pip``:
 
 .. code-block:: shell
 
