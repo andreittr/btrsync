@@ -245,20 +245,45 @@ async def src_root(loc, rootopts={}, rootargs={}):
 	return root, matcher
 
 
-class CliConfirm:
+def format_transfer(volpaths, parent, destdir, *, verb=False):
+	"""
+	Format the paths that make up a transfer for display on the command line.
+
+	:param volpaths: sequence of paths to send
+	:param parent: parent to use for incremental send, or :const:`None` for full send
+	:param destdir: destination directory used for receive
+	:param verb: if :const:`True` include more details
+	:returns: formatted string
+	"""
+	vpaths = ',\n'.join(volpaths)
+	if verb:
+		return '\n'.join((
+			vpaths,
+			'\t' + (f'incremental from {parent}' if parent is not None else 'full'),
+			f'\tinto {destdir}\n',
+		))
+	else:
+		return vpaths + '\t' + ('full' if parent is None else 'incr') + ' -> ' + destdir
+
+
+class Confirm(sync.Transfer):
 	"""
 	Handle the UI aspects of confirming a sync via the command line.
 
 	:param src: the SOURCE command line argument currently being processed
 	"""
-	def __init__(self, src):
+	VERBOSE = False
+
+	def __init__(self, src, *args, **kwargs):
+		super().__init__(*args, **kwargs)
 		self._preview = []
 		self.src = src
 
 	async def transf(self, vols, par, src, dst):
 		"""Transfer function as expected by :meth:`btrsync.sync.BtrSync.sync` that only logs transfers."""
-		self._preview.append('; '.join((',\n'.join(v['path'] for v in vols),
-		                           'full transfer' if par is None else f"incremental from {par['path']}")))
+		volpaths, parent = self._sendpaths(vols, par)
+		recvpath = self._recvpath(volpaths)
+		self._preview.append(format_transfer(volpaths, parent, recvpath, verb=self.VERBOSE))
 
 	def head(self):
 		"""Called at the beginning to print a header."""
@@ -299,7 +324,7 @@ async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts
 	:param incls: list of globs matching subvolumes to include in the sync
 	:param excls: list of globs matching subvolumes to exclude from the sync
 	:param auto: if :const:`False` do a dry run, if :const:`None` ask for confirmation, if :const:`True` proceed without asking
-	:param confirm: :class:`.CliConfirm`-like class to handle user interaction for confirmation
+	:param confirm: :class:`.Confirm`-like class to handle user interaction for confirmation
 	:param syncer: :class:`btrsync.sync.BtrSync`-like class to use for sync
 	:param syncopts: keyword arguments to pass to `syncer`
 	:param transfer: :class:`btrsync.sync.Transfer`-like class to use for sync
@@ -332,7 +357,7 @@ async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts
 		o.update(syncopts)
 		# Confirmation
 		if auto is not True:
-			conf = confirm(cursrc)
+			conf = confirm(cursrc, recvpath=recvpath, **transopts)
 			conf.head()
 			if not await s.sync(conf.transf, **o):
 				break
@@ -362,19 +387,16 @@ def process_args(cliargs):
 					print(f"@ {', '.join(x['path'] for x in args)}", file=sys.stderr)
 
 		if not cliargs.quiet:
-			if cliargs.verbose:
-				@staticmethod
-				async def report(vols, par, src, dst):
-					print(f"At {', '.join(x['path'] for x in vols)}; ", end='')
-					print('full' if par is None else f"incremental from {par['path']}")
-			else:
-				@staticmethod
-				async def report(vols, par, src, dst):
-					print(f"At {', '.join(posixpath.basename(x['path']) for x in vols)}; " +
-					      ('full' if par is None else 'incremental'))
+			async def report(self, vols, par, src, dst):
+				volpaths, parent = self._sendpaths(vols, par)
+				recvpath = self._recvpath(volpaths)
+				print(format_transfer(volpaths, parent, recvpath, verb=cliargs.verbose))
 			@staticmethod
 			async def report_done(vols, par, src, dst):
 				print(" - Done")
+
+	class CliConfirm(Confirm):
+		VERBOSE = cliargs.verbose
 
 	srootopts = {'sudo': cliargs.sudo or cliargs.sudo_src}
 	drootopts = {'sudo': cliargs.sudo or cliargs.sudo_dest}

@@ -4,6 +4,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import re
 import unittest
 import itertools
 
@@ -327,6 +328,44 @@ class TestHumanBytes(unittest.TestCase):
 				with self.subTest(n=n):
 					self.assertEqual(cli.humanbytes(n),
 					                 self.sjoin(self.numfmt(2**p - 1), unit))
+
+
+class TestFormatTransfer(unittest.TestCase):
+	CASES = ([], ['test / vol'], ['vol1', 'vol2', 'Vol Three'])
+
+	def _assertvols(self, r, s, vols):
+		m = r.match(s)
+		self.assertIsNotNone(m)
+		mvols, mpar, mdest = m.groups()
+		if not vols:
+			self.assertEqual(mvols, '')
+		elif len(vols) == 1:
+			self.assertEqual(mvols, vols[0])
+		else:
+			self.assertEqual(mvols, ',\n'.join(vols))
+		return mpar, mdest
+
+	def test_default(self):
+		r = re.compile('([^\t]*)\t(incr|full) -> ([^\n]*)')
+		for vols in self.CASES:
+			for par in (None, 'test/Parent Volume'):
+				for dest in ('.', 'dest / path'):
+					with self.subTest(vols=vols, par=par, dest=dest):
+						s = cli.format_transfer(vols, par, dest, verb=False)
+						mpar, mdest = self._assertvols(r, s, vols)
+						self.assertEqual(mpar, 'full' if par is None else 'incr')
+						self.assertEqual(mdest, dest)
+
+	def test_verbose(self):
+		r = re.compile('([^\t]*)\n\t(full|incremental from [^\n]*)\n\tinto ([^\n]*)\n')
+		for vols in self.CASES:
+			for par in (None, 'test/Parent Volume'):
+				for dest in ('.', 'dest / path'):
+					with self.subTest(vols=vols, par=par, dest=dest):
+						s = cli.format_transfer(vols, par, dest, verb=True)
+						mpar, mdest = self._assertvols(r, s, vols)
+						self.assertEqual(mpar, 'full' if par is None else f'incremental from {par}')
+						self.assertEqual(mdest, dest)
 
 
 if __name__ == '__main__':
