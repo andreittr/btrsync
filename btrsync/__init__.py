@@ -7,4 +7,4 @@
 
 """Synchronize btrfs subvolumes."""
 
-VERSION = '0.2.dev'
+VERSION = '0.2'
