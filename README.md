@@ -10,6 +10,7 @@ Replicate btrfs subvolumes, handling Copy-on-Write (COW) relationships and incre
 
 Documentation is on [Read the Docs](https://btrsync.readthedocs.io).
 Code repository and issue tracker are on [GitHub](https://github.com/andreittr/btrsync).
+Changelog [here](CHANGELOG.md).
 
 ## Background
 [btrfs](https://btrfs.wiki.kernel.org) is a modern Linux Copy-on-Write (COW) filesystem supporting powerful features such as snapshotting and incremental serialization.
