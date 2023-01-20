@@ -9,7 +9,6 @@
 Btrfs subvolume synchronization.
 """
 
-import os
 import asyncio
 import posixpath
 import itertools
@@ -181,7 +180,20 @@ class Transfer:
 			self.err(e, *err_args)
 			raise asyncio.CancelledError() from e
 
-	async def _wait_tasks(self, tasks):
+	async def _collect(self, *tasks):
+		erred = False
+		for t in tasks:
+			try:
+				await asyncio.wait_for(t, timeout=0)
+			except TimeoutError:
+				pass
+			except BaseException as e:
+				self.err(e)
+				erred = True
+		if erred:
+			raise asyncio.CancelledError()
+
+	async def _wait_tasks(self, *tasks):
 		"""
 		Try waiting for all `tasks`, canceling all upon error.
 
@@ -191,13 +203,10 @@ class Transfer:
 		try:
 			return await asyncio.gather(*tasks)
 		except BaseException as e:
-			for t in tasks:
-				try:
-					await asyncio.wait_for(t, timeout=0)
-				except TimeoutError:
-					pass
-				except BaseException as ex:
-					self.err(ex)
+			try:
+				await self._collect(*tasks)
+			except asyncio.CancelledError:
+				pass
 			raise asyncio.CancelledError() from e
 
 	@staticmethod
@@ -228,10 +237,9 @@ class Transfer:
 		args = (vols, par, src, dst)
 		await self._try(self.report(*args))
 		volpaths, parent = self._sendpaths(vols, par)
-		fd, scoro = await self._try(src.send(*volpaths, parent=parent), *args)
-		dcoro = dst.receive(fd, self._recvpath(volpaths))
-		tasks = [asyncio.create_task(x) for x in (scoro, dcoro)]
-		await self._wait_tasks(tasks)
+		flow, scoro = await self._try(src.send(*volpaths, parent=parent), *args)
+		dcoro = await self._try(dst.receive(flow, self._recvpath(volpaths)))
+		await self._wait_tasks(scoro, dcoro, flow.pump())
 		await self._try(self.report_done(*args))
 
 
@@ -248,35 +256,22 @@ class ProgressTransfer(Transfer):
 		self.period = period
 		self.prog_seq = prog_seq
 
-	@staticmethod
-	async def _dopump(r, w, cnt):
-		"""Byte pump reading from `r` into `w` and tallying the byte count into `cnt`."""
-		def fdpump(r, w, cnt):
-			NBYTES = 2**20
-			c = 0
-			while True:
-				n = os.splice(r, w, NBYTES)
-				if not n:
-					break
-				c += n
-				cnt[0] = c
+	async def report_progress(self, total, prev, seq):
+		"""
+		Called on every progress reporting event.
 
-		try:
-			await asyncio.to_thread(fdpump, r.fd, w.fd, cnt)
-		finally:
-			r.close()
-			w.close()
+		:param total: currrent total bytes transferred
+		:param prev: value of `total` from previous call
+		:param seq: sequence to indicate activity
+		"""
 
-	async def report_progress(self, cnt, seq):
-		"""Called on every progress reporting event with current `cnt` and activity sequence `seq`."""
-		pass
-
-	async def progress(self, cnt, seq):
+	async def progress(self, flow, seq):
 		"""Implement progress reporting every `period` seconds."""
+		cnt, prev = flow.count, 0
 		while True:
-			await self.report_progress(cnt, seq)
-			cnt[1] = cnt[0]
+			await self.report_progress(cnt, prev, seq)
 			await asyncio.sleep(self.period)
+			cnt, prev = flow.count, cnt
 
 	async def transf(self, vols, par, src, dst):
 		"""
@@ -289,36 +284,17 @@ class ProgressTransfer(Transfer):
 		:raises asyncio.CancelledError: if any error has occurred, after logging it with :meth:`.err`
 		"""
 		args = (vols, par, src, dst)
-		cnt = [0, 0]
 		seq = itertools.cycle(self.prog_seq)
-
-		await self._try(self.report(*args))
-
 		volpaths, parent = self._sendpaths(vols, par)
-		fd, scoro = await self._try(src.send(*volpaths, parent=parent), *args)
+		await self._try(self.report(*args))
+		flow, scoro = await self._try(src.send(*volpaths, parent=parent), *args)
+		flow.stats = True
+		dcoro = await self._try(dst.receive(flow, self._recvpath(volpaths)))
+		prog = asyncio.create_task(self.progress(flow, seq))
 		try:
-			r, w = map(util.FileDesc, os.pipe())
-		except BaseException as e:
-			self.err(e)
-			raise asyncio.CancelledError() from e
-		pump = asyncio.create_task(self._dopump(fd, w, cnt))
-		dtask = asyncio.create_task(dst.receive(r, self._recvpath(volpaths)))
-		stask = asyncio.create_task(scoro)
-		prog = asyncio.create_task(self.progress(cnt, seq))
-
-		tasks = [stask, dtask, pump]
-		try:
-			await self._wait_tasks(tasks)
+			await self._wait_tasks(scoro, dcoro, flow.pump())
 		finally:
-			prog.cancel()
-			try:
-				await prog
-			except asyncio.CancelledError:
-				pass
-			except BaseException as e:
-				self.err(e)
-				raise asyncio.CancelledError() from e
-
+			await self._collect(prog)
 		await self._try(self.report_done(*args))
 
 

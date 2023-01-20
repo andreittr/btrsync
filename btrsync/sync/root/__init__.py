@@ -52,13 +52,17 @@ class BtrfsRoot(abc.ABC):
 		:param paths: the paths of the subvolumes to send
 		:param parent: if not :const:`None`, the path of the parent subvolume to use for incremental send
 		:param clones: sequence of paths of clone subvolumes
-		:returns: a tuple ``(fildes, send_coro)`` containing the send stream
+		:returns: a tuple ``(flow, send_coro)`` containing the send flow
 			and a coroutine that finalizes the send operation when run
 		"""
 
 	@abc.abstractmethod
-	async def receive(self, fildes, path='.'):
-		"""Perform a receive operation into `path` using the send stream provided by `fildes`."""
+	async def receive(self, flow, path='.'):
+		"""
+		Perform a receive operation into `path` using the send stream provided by `flow`.
+
+		:returns: a coroutine that finalizes the receive operation when run
+		"""
 
 
 from . import local, ssh

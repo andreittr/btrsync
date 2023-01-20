@@ -51,9 +51,9 @@ class CliProgress(sync.ProgressTransfer):
 	def __init__(self, *args, **kwargs):
 		super().__init__(prog_seq='|/-\\', *args, **kwargs)
 
-	async def report_progress(self, cnt, seq):
-		print('\r', next(seq), humanbytes(cnt[0]),
-		      humanbytes((cnt[0] - cnt[1]) / self.period) + '/sec', end='')
+	async def report_progress(self, total, prev, seq):
+		print('\r', next(seq), humanbytes(total),
+		      humanbytes((total - prev) / self.period) + '/sec', end='')
 
 
 class BaseMatch:

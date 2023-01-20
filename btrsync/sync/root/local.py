@@ -128,33 +128,31 @@ class LocalBtrfsRoot(BtrfsRoot):
 		ret, (stdout, stderr) = await self._run_checked(btrfs.cmd.show(tpath), msg=tpath, stdin=cmdex.DEVNULL)
 		return btrfs.parse.Show.from_stdout(stdout)
 
+	async def send(self, *paths, parent=None, clones=[]):
+		tpaths = (self._localpath(p) for p in paths)
+		if parent is not None:
+			parent = self._localpath(parent)
+		clones = (self._localpath(c) for c in clones)
+		await self._chk()
+		r, w = map(util.FileDesc, os.pipe())
+		return util.PipeFlow(r), self._dosend(w, btrfs.cmd.send(*tpaths, parent=parent, clones=clones))
+
 	async def _dosend(self, fildes, cmd):
 		p, r = await self._ex(cmd, stdin=cmdex.DEVNULL, stdout=fildes.fd, stderr=cmdex.PIPE)
 		fildes.close()
 		if r[0][0].returncode:
 			raise BtrfsError(r[0][1][1].decode('utf-8').splitlines())
 
-	async def send(self, *paths, parent=None, clones=[]):
-		tpaths = (self._localpath(p) for p in paths)
-		if parent is not None:
-			parent = self._localpath(parent)
-		clones = (self._localpath(c) for c in clones)
-		cmd = btrfs.cmd.send(*tpaths, parent=parent, clones=clones)
-		await self._chk()
-		r, w = map(util.FileDesc, os.pipe())
-		return r, self._dosend(w, cmd)
-
-	async def receive(self, fildes, path='.'):
+	async def receive(self, flow, path='.'):
 		tpath = self._localpath(path)
-		cmd = btrfs.cmd.receive(tpath)
 		await self._chk()
+		return self._dorecv(tpath, flow.connect_pipe())
+
+	async def _dorecv(self, tpath, fildes):
 		if self.create_recvpath:
-			await self._run_checked(util.Cmd('mkdir', ['-p', tpath]))
-		task = asyncio.create_task(self._ex(cmd, stdin=fildes.fd, stdout=cmdex.PIPE, stderr=cmdex.PIPE))
+			await self._run_checked(util.Cmd('mkdir', ['-p', tpath]), msg=tpath)
 		fildes.closed = True
-		p, r = await task
-		if r[-1][0].returncode:
-			raise BtrfsError(r[-1][1][1].decode('utf-8').splitlines())
+		await self._run_checked(btrfs.cmd.receive(tpath), msg=tpath, stdin=fildes.fd)
 
 
 def LocalRoot(*, sudo=False):

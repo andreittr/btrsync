@@ -10,7 +10,9 @@ Various general purpose utility classes and functions.
 """
 
 import os
+import abc
 import shlex
+import asyncio
 
 from collections import deque
 from collections import namedtuple
@@ -35,6 +37,94 @@ class FileDesc:
 
 	def __del__(self):
 		self.close()
+
+
+class Flow(abc.ABC):
+	"""
+	Abstract base class for a flow of bytes that can be exposed through different interfaces.
+
+	Flows are set up to expose a specific interface with one of the ``connect_*`` methods.
+	Subsequently, running the coroutine returned by :meth:`.pump` handles I/O and any necessary processing.
+	A tally of transmitted bytes can be found in :attr:`.count` if :attr:`.stats` is :const:`True`.
+	"""
+	def __init__(self):
+		self._stats = False
+		self._count = None
+		self._pump = None
+
+	@property
+	def stats(self):
+		"""If :const:`True`, :attr:`.count` will tally bytes transmitted."""
+		return self._stats
+	@stats.setter
+	def stats(self, val):
+		self._stats = bool(val)
+
+	@property
+	def count(self):
+		"""Total bytes transmitted if :attr:`.stats` is :const:`True`, :const:`None` otherwise."""
+		return self._count
+
+	def pump(self):
+		"""
+		Return a coroutine that handles data flow when run.
+
+		:raises ValueError: if called before one of the ``connect_*`` methods
+		"""
+		if self._pump is None:
+			raise ValueError('pump called before connect_*')
+		else:
+			return self._pump
+
+	@abc.abstractmethod
+	def connect_pipe(self):
+		"""
+		Expose flow as a UNIX pipe.
+
+		:returns: an integer file descriptor of the read end of a UNIX pipe
+		"""
+
+
+class PipeFlow(Flow):
+	"""
+	Flow sourced from the read end of a UNIX pipe.
+
+	:param rfildes: :class:`FileDesc`-like descriptor of the read end of the pipe
+	"""
+	def __init__(self, rfildes):
+		super().__init__()
+		self._r = rfildes
+
+	@staticmethod
+	async def _nop():
+		pass
+
+	async def _pipe_pump(self, r, w):
+		"""Byte pump reading from `r` into `w` and tallying the byte count into :attr:`.count`."""
+		def fdpump(r, w):
+			NBYTES = 2**20
+			c = 0
+			while True:
+				n = os.splice(r, w, NBYTES)
+				if not n:
+					break
+				c += n
+				self._count = c
+		try:
+			await asyncio.to_thread(fdpump, r.fd, w.fd)
+		finally:
+			r.close()
+			w.close()
+
+	def connect_pipe(self):
+		if self.stats:
+			r, w = map(FileDesc, os.pipe())
+			self._pump = self._pipe_pump(self._r, w)
+			self._count = 0
+			return r
+		else:
+			self._pump = self._nop()
+			return self._r
 
 
 class Cmd(namedtuple('Cmd', ['prg', 'args'], defaults=((),))):
