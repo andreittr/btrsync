@@ -385,8 +385,6 @@ def process_args(cliargs):
 			@staticmethod
 			def err(e, *args):
 				print('Error:', e, file=sys.stderr)
-				if args:
-					print(f"@ {', '.join(x['path'] for x in args)}", file=sys.stderr)
 
 		if not cliargs.quiet:
 			async def report(self, vols, par, src, dst):
