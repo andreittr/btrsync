@@ -266,7 +266,7 @@ def format_transfer(volpaths, parent, destdir, *, verb=False):
 		return vpaths + '\t' + ('full' if parent is None else 'incr') + ' -> ' + destdir
 
 
-class Confirm(sync.Transfer):
+class Confirm(sync.ProgressTransfer):
 	"""
 	Handle the UI aspects of confirming a sync via the command line.
 
@@ -377,7 +377,8 @@ async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts
 def process_args(cliargs):
 	"""Process :mod:`argparse`-style output into arguments for :func:`.do_btrsync`."""
 
-	class CliTransfer(CliProgress if cliargs.progress and not cliargs.quiet else sync.Transfer):
+	prog = cliargs.progress and not cliargs.quiet
+	class CliTransfer(CliProgress if prog else sync.Transfer):
 		"""Transfer class tailored to cli arguments."""
 		if cliargs.quiet < 2:
 			@staticmethod
@@ -398,6 +399,9 @@ def process_args(cliargs):
 	class CliConfirm(Confirm):
 		VERBOSE = cliargs.verbose
 
+	transopts = {'replicate_dirs': cliargs.replicate_dirs}
+	if prog:
+		transopts['period'] = cliargs.progress_period
 	srootopts = {'sudo': cliargs.sudo or cliargs.sudo_src}
 	drootopts = {'sudo': cliargs.sudo or cliargs.sudo_dest}
 	srootargs = {}
@@ -415,7 +419,7 @@ def process_args(cliargs):
 		'syncer': IncrSync if cliargs.incremental_only else sync.BtrSync,
 		'syncopts': {'batch': cliargs.batch, 'parallel': cliargs.parallel, 'transfer_existing': cliargs.existing},
 		'transfer': CliTransfer,
-		'transopts': {'replicate_dirs': cliargs.replicate_dirs},
+		'transopts': transopts,
 		'srootopts': srootopts,
 		'srootargs': srootargs,
 		'drootopts': drootopts,
