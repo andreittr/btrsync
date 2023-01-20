@@ -8,7 +8,8 @@ table.docutils {
   margin-left: unset;
 }
 
-dl.method {
+dl.method,
+dl.property {
   margin-top: 1em;
 }
 
