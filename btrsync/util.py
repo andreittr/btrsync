@@ -99,13 +99,23 @@ class PipeFlow(Flow):
 	async def _nop():
 		pass
 
+	try:
+		_splice = os.splice
+	except AttributeError:
+		@staticmethod
+		def _splice(r, w, n):
+			d = os.read(r, n)
+			if d:
+				os.write(w, d)
+			return len(d)
+
 	async def _pipe_pump(self, r, w):
 		"""Byte pump reading from `r` into `w` and tallying the byte count into :attr:`.count`."""
 		def fdpump(r, w):
 			NBYTES = 2**20
 			c = 0
 			while True:
-				n = os.splice(r, w, NBYTES)
+				n = self._splice(r, w, NBYTES)
 				if not n:
 					break
 				c += n
