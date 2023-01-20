@@ -83,6 +83,16 @@ class TestSSHRoot(unittest.TestCase):
 		else:
 			self.fail('sudo command not found in wrap')
 
+	def test_pipe(self):
+		r = SSHRoot('testhost')
+		wc, *o = r.wrapcmds([self.TESTCMD]*3)
+		self.assertEqual(o, [])
+		self.assertIn('|', wc.args[-1])
+		self.assertIn('myprog', wc.args[-1])
+		for arg in wc.args[:-1]:
+			self.assertNotIn('|', arg)
+			self.assertNotIn('myprog', arg)
+
 
 if __name__ == '__main__':
 	unittest.main()

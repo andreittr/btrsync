@@ -54,6 +54,19 @@ class TestCmd(unittest.TestCase):
 				c = util.Cmd.from_cmdstr(cmds)
 				self.assertEqual(util.Cmd.from_cmdstr(c.shellify()), c)
 
+	def test_pipe_arg(self):
+		for _, prg, args in  self.CMDS:
+			c = util.Cmd(prg, args)
+			for w in self.WRAPS:
+				p1 = c.pipe_arg([w])
+				self.assertEqual(p1.prg, c.prg)
+				self.assertEqual(p1.args[:-1], c.args)
+				self.assertEqual(p1.args[-1], w.shellify())
+				p3 = c.pipe_arg([w]*3)
+				self.assertEqual(p3.prg, c.prg)
+				self.assertEqual(p3.args[:-1], c.args)
+				self.assertEqual(p3.args[-1], ' | '.join([w.shellify()]*3))
+
 	def test_wrap(self):
 		for cmds, _, _ in self.CMDS:
 			c = util.Cmd.from_cmdstr(cmds)

@@ -43,11 +43,11 @@ def SSHRoot(host, *, user=None, port=None, pkpath=None, compress=False, sudo=Fal
 		if sudo:
 			@staticmethod
 			def wrapcmds(cmds):
-				yield from (c.wrap(local.SUDO).wrap(SSH, shellfmt=True) for c in cmds)
+				yield SSH.pipe_arg(c.wrap(local.SUDO) for c in cmds)
 		else:
 			@staticmethod
 			def wrapcmds(cmds):
-				yield from (c.wrap(SSH, shellfmt=True) for c in cmds)
+				yield SSH.pipe_arg(cmds)
 
 		def __repr__(self):
 			ssh_args = ', '.join(f'{arg}={val!r}' for arg, val in _rargs.items())

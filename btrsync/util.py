@@ -58,9 +58,20 @@ class Cmd(namedtuple('Cmd', ['prg', 'args'], defaults=((),))):
 		tok.extend(shlex.quote(x) for x in self.args)
 		return ' '.join(tok)
 
+	def pipe_arg(self, pipe):
+		"""
+		Return a new :class:`.Cmd` with a shell pipeline as last argument.
+
+		:param pipe: sequence of :class:`.Cmd` that form the pipeline
+		:returns: the new :class:`.Cmd` instance
+		"""
+		args = list(self.args)
+		args.append(' | '.join(cmd.shellify() for cmd in pipe))
+		return type(self)(self.prg, args)
+
 	def wrap(self, outer, *, shellfmt=False, endmark=None):
 		"""
-		Return a new :class:`.Cmd` instance that passes `self` as arguments to `outer`.
+		Return a new :class:`.Cmd` that passes `self` as arguments to `outer`.
 
 		:param outer: the outer command that receives `self` as arguments
 		:param shellfmt: if :const:`True`, pass a shell-escaped form of `self` as a single last argument to `outer`;
