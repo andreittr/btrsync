@@ -37,7 +37,8 @@ async def create_pipeline(*cmds, stdin=None, stdout=None, stderr=None):
 	Asynchronous iterator returning started subprocesses connected together as a pipeline.
 
 	:param cmds: sequence of :class:`btrsync.util.Cmd`-like commands that form the pipeline
-	:param stdin: standard input of the first command in the pipeline; :const:`None` means inherit from caller
+	:param stdin: standard input of the first command in the pipeline; :const:`None` means inherit from caller.
+		if supplied and not zero, it is guaranteed to be closed on either success or error.
 	:param stdout: standard output of the last command in the pipeline; :const:`None` means inherit from caller
 	:param stderr: standard error of all commands in the pipeline; :const:`None` means inherit from caller
 	:returns: :class:`asyncio.subprocess.Process` instances of started processes
