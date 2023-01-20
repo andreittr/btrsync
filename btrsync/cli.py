@@ -258,9 +258,10 @@ def format_transfer(volpaths, parent, destdir, *, verb=False):
 	vpaths = ',\n'.join(volpaths)
 	if verb:
 		return '\n'.join((
+			'',
 			vpaths,
 			'\t' + (f'incremental from {parent}' if parent is not None else 'full'),
-			f'\tinto {destdir}\n',
+			f'\tinto {destdir}',
 		))
 	else:
 		return vpaths + '\t' + ('full' if parent is None else 'incr') + ' -> ' + destdir

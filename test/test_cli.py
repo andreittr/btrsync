@@ -357,7 +357,7 @@ class TestFormatTransfer(unittest.TestCase):
 						self.assertEqual(mdest, dest)
 
 	def test_verbose(self):
-		r = re.compile('([^\t]*)\n\t(full|incremental from [^\n]*)\n\tinto ([^\n]*)\n')
+		r = re.compile('\n([^\t]*)\n\t(full|incremental from [^\n]*)\n\tinto ([^\n]*)')
 		for vols in self.CASES:
 			for par in (None, 'test/Parent Volume'):
 				for dest in ('.', 'dest / path'):
