@@ -135,7 +135,7 @@ async def ex(*cmds, stdin=None, stdout=None, stderr=None,
 		await _waitall(procs)
 	return procs, r
 
-async def ex_out(*cmds, **kwargs):
+async def ex_out(*cmds, stdout=PIPE, **kwargs):
 	"""
 	Execute a series of commands in a pipeline, capturing standard output and error.
 
@@ -144,6 +144,6 @@ async def ex_out(*cmds, **kwargs):
 	:param timeout: if not :const:`None`, time out after this many seconds; remaining running processes are killed on timeout
 	:returns: a list of tuples ``(exit_code, output)``, in the order specified by `cmds`, of the processes' exit code and captured ``(stdout, stderr)`` output
 	"""
-	proc, ret = await ex(*cmds, stdout=PIPE, stderr=PIPE, hard_timeout=True, **kwargs)
+	proc, ret = await ex(*cmds, stdout=stdout, stderr=PIPE, hard_timeout=True, **kwargs)
 	rv = {r[0]: (r[0].returncode, r[1]) for r in ret}
 	return [rv[p] if p in rv else (None, (b'', b'')) for p in proc]

@@ -66,11 +66,9 @@ class LocalBtrfsRoot(BtrfsRoot):
 	async def _run(cls, *cmds, **kwargs):
 		return (await cmdex.ex_out(*cls.wrapcmds(cmds), **kwargs))[-1]
 
-	def _ex(self, *cmds, **kwargs):
-		return cmdex.ex(*self.wrapcmds(cmds), **kwargs)
-
-	async def _run_checked(self, *cmds, msg='', **kwargs):
-		ret, (stdout, stderr) = await self._run(*cmds, **kwargs)
+	@classmethod
+	async def _run_checked(cls, *cmds, msg='', **kwargs):
+		ret, (stdout, stderr) = await cls._run(*cmds, **kwargs)
 		if ret != 0:
 			raise BtrfsError(': '.join((stderr.decode('utf-8').rstrip(), msg)))
 		return ret, (stdout, stderr)
@@ -138,10 +136,10 @@ class LocalBtrfsRoot(BtrfsRoot):
 		return util.PipeFlow(r), self._dosend(w, btrfs.cmd.send(*tpaths, parent=parent, clones=clones))
 
 	async def _dosend(self, fildes, cmd):
-		p, r = await self._ex(cmd, stdin=cmdex.DEVNULL, stdout=fildes.fd, stderr=cmdex.PIPE)
-		fildes.close()
-		if r[0][0].returncode:
-			raise BtrfsError(r[0][1][1].decode('utf-8').splitlines())
+		try:
+			await self._run_checked(cmd, msg=cmd.shellify(), stdin=cmdex.DEVNULL, stdout=fildes.fd)
+		finally:
+			fildes.close()
 
 	async def receive(self, flow, path='.'):
 		tpath = self._localpath(path)
