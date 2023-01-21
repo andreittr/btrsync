@@ -6,6 +6,13 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Changelog
 
+## [0.2.1] - 2023-01-21
+
+### Fixed
+- Fix CLI option `-t` not working
+- Ensure correct abnormal exit when `do_btrsync()` fails
+- Remove broken CLI error formatting
+
 ## [0.2] - 2023-01-14
 
 ### Added
