@@ -201,8 +201,9 @@ class Transfer:
 		:raises: asyncio.CancelledError if any tasks raise an exception
 		"""
 		try:
-			return await asyncio.gather(*tasks)
+			await asyncio.gather(*tasks)
 		except BaseException as e:
+			self.err(e)
 			try:
 				await self._collect(*tasks)
 			except asyncio.CancelledError:
