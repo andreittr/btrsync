@@ -8,3 +8,4 @@
 """Synchronize btrfs subvolumes."""
 
 VERSION = '0.3.dev'
+"""btrsync version"""
