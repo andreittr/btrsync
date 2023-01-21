@@ -215,7 +215,10 @@ class Transfer:
 	def _sendpaths(vols, par):
 		volpaths = [v['path'] for v in vols]
 		parent = par['path'] if par is not None else None
-		return volpaths, parent
+		meta = {'volumes': volpaths}
+		if parent is not None:
+			meta['parent'] = parent
+		return volpaths, parent, meta
 
 	def _recvpath(self, volpaths):
 		if self.replicate_dirs:
@@ -238,9 +241,9 @@ class Transfer:
 		"""
 		args = (vols, par, src, dst)
 		await self._try(self.report(*args))
-		volpaths, parent = self._sendpaths(vols, par)
+		volpaths, parent, meta = self._sendpaths(vols, par)
 		flow, scoro = await self._try(src.send(*volpaths, parent=parent), *args)
-		dcoro = await self._try(dst.receive(flow, self._recvpath(volpaths)))
+		dcoro = await self._try(dst.receive(flow, self._recvpath(volpaths), meta=meta))
 		await self._try_gather(scoro, dcoro, flow.pump())
 		await self._try(self.report_done(*args))
 
@@ -287,11 +290,11 @@ class ProgressTransfer(Transfer):
 		"""
 		args = (vols, par, src, dst)
 		seq = itertools.cycle(self.prog_seq)
-		volpaths, parent = self._sendpaths(vols, par)
+		volpaths, parent, meta = self._sendpaths(vols, par)
 		await self._try(self.report(*args))
 		flow, scoro = await self._try(src.send(*volpaths, parent=parent), *args)
 		flow.stats = True
-		dcoro = await self._try(dst.receive(flow, self._recvpath(volpaths)))
+		dcoro = await self._try(dst.receive(flow, self._recvpath(volpaths), meta=meta))
 		prog = asyncio.create_task(self.progress(flow, seq))
 		try:
 			await self._try_gather(scoro, dcoro, flow.pump())

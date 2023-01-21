@@ -55,15 +55,18 @@ class BtrfsRoot(abc.ABC):
 		:param paths: the paths of the subvolumes to send
 		:param parent: if not :const:`None`, the path of the parent subvolume to use for incremental send
 		:param clones: sequence of paths of clone subvolumes
-		:returns: a tuple ``(flow, send_coro)`` containing the send flow
+		:returns: a tuple ``(flow, send_coro)`` containing the send :class:`btrsync.util.Flow`
 			and a coroutine that finalizes the send operation when run
 		"""
 
 	@abc.abstractmethod
-	async def receive(self, flow, path='.'):
+	async def receive(self, flow, path='.', *, meta={}):
 		"""
 		Perform a receive operation into `path` using the send stream provided by `flow`.
 
+		:param flow: a :class:`btrsync.util.Flow` containing the btrfs send stream
+		:param path: the relative path to receive into
+		:param meta: (optional) additional metadata about the send stream
 		:returns: a coroutine that finalizes the receive operation when run
 		"""
 

@@ -282,7 +282,7 @@ class Confirm(sync.ProgressTransfer):
 
 	async def transf(self, vols, par, src, dst):
 		"""Transfer function as expected by :meth:`btrsync.sync.BtrSync.sync` that only logs transfers."""
-		volpaths, parent = self._sendpaths(vols, par)
+		volpaths, parent, _ = self._sendpaths(vols, par)
 		recvpath = self._recvpath(volpaths)
 		self._preview.append(format_transfer(volpaths, parent, recvpath, verb=self.VERBOSE))
 
@@ -388,7 +388,7 @@ def process_args(cliargs):
 
 		if not cliargs.quiet:
 			async def report(self, vols, par, src, dst):
-				volpaths, parent = self._sendpaths(vols, par)
+				volpaths, parent, _ = self._sendpaths(vols, par)
 				recvpath = self._recvpath(volpaths)
 				print(format_transfer(volpaths, parent, recvpath, verb=cliargs.verbose))
 			@staticmethod
