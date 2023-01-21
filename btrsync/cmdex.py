@@ -38,15 +38,24 @@ async def create_pipeline(*cmds, stdin=None, stdout=None, stderr=None):
 
 	:param cmds: sequence of :class:`btrsync.util.Cmd`-like commands that form the pipeline
 	:param stdin: standard input of the first command in the pipeline; :const:`None` means inherit from caller.
-		if supplied and not zero, it is guaranteed to be closed on either success or error.
+		If supplied must be file descriptor or file-like object backed by a file descriptor.
+		If supplied, it is guaranteed to be closed on either success or error.
 	:param stdout: standard output of the last command in the pipeline; :const:`None` means inherit from caller
+		If supplied must be file descriptor or file-like object backed by a file descriptor.
 	:param stderr: standard error of all commands in the pipeline; :const:`None` means inherit from caller
+		If supplied must be file descriptor or file-like object backed by a file descriptor.
 	:returns: :class:`asyncio.subprocess.Process` instances of started processes
 	"""
 	def _chkclose(fd):
-		if fd is not None and fd >= 0:
-			os.close(fd)
+		if fd is not None:
+			if not isinstance(fd, int):
+				fd.close()
+			elif fd >= 0:
+				os.close(fd)
+	def _fd(fd):
+		return fd if fd is None or isinstance(fd, int) else fd.fileno()
 
+	err = _fd(stderr)
 	end = stdin
 	for prg, args in cmds[:-1]:
 		try:
@@ -55,7 +64,7 @@ async def create_pipeline(*cmds, stdin=None, stdout=None, stderr=None):
 			_chkclose(end)
 			raise
 		try:
-			proc = await asyncio.create_subprocess_exec(prg, *args, stdin=end, stdout=head, stderr=stderr)
+			proc = await asyncio.create_subprocess_exec(prg, *args, stdin=_fd(end), stdout=head, stderr=err)
 		except:
 			os.close(nextend)
 			raise
@@ -66,7 +75,7 @@ async def create_pipeline(*cmds, stdin=None, stdout=None, stderr=None):
 		end = nextend
 	for prg, args in cmds[-1:]:
 		try:
-			proc = await asyncio.create_subprocess_exec(prg, *args, stdin=end, stdout=stdout, stderr=stderr)
+			proc = await asyncio.create_subprocess_exec(prg, *args, stdin=_fd(end), stdout=_fd(stdout), stderr=err)
 		finally:
 			_chkclose(end)
 		yield proc
