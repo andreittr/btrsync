@@ -14,6 +14,9 @@ import abc
 
 class BtrfsError(Exception):
 	"""Exception class encapsulating btrfs-specific errors."""
+	def __str__(self):
+		ctx, err = self.args
+		return f'"{ctx}" failed:\n\t{err}'
 
 
 class BtrfsRoot(abc.ABC):
