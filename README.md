@@ -48,7 +48,7 @@ This will run the unit tests, build the documentation and a local wheel, then in
 
 ## Usage
 ### Command-line
-See the [CLI Usage](https://btrsync.readthedocs.io/en/latest/cli-usage.html) section of the documentation for general guidance and examples.
+See the [CLI Usage](https://btrsync.readthedocs.io/en/stable/cli-usage.html) section of the documentation for general guidance and examples.
 
 The help option provides information about command-line options:
 ```
@@ -56,12 +56,12 @@ btrsync --help
 ```
 
 ### Library
-You can also `import btrsync` directly in your Python programs, see the [API Reference](https://btrsync.readthedocs.io/en/latest/api.html).
+You can also `import btrsync` directly in your Python programs, see the [API Reference](https://btrsync.readthedocs.io/en/stable/api.html).
 The implementation of the [btrsync CLI](btrsync/cli.py) provides an extensive example on how to use the API.
 
 ## API
 
-See the [API Reference](https://btrsync.readthedocs.io/en/latest/api.html) section of the documentation.
+See the [API Reference](https://btrsync.readthedocs.io/en/stable/api.html) section of the documentation.
 
 ## Development
 ### Branches

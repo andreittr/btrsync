@@ -88,4 +88,4 @@ btrsync --help
 
 ## API
 
-See the [API Reference](https://btrsync.readthedocs.io/en/latest/api.html) section of the documentation.
+See the [API Reference](https://btrsync.readthedocs.io/en/stable/api.html) section of the documentation.
