@@ -9,6 +9,7 @@
 Various general purpose utility classes and functions.
 """
 
+import io
 import os
 import abc
 import shlex
@@ -17,29 +18,6 @@ import asyncio
 from collections import deque
 from collections import namedtuple
 from collections import defaultdict
-
-
-class FileDesc:
-	"""
-	Wrapper class for a file descriptor that closes it exactly once, either manually or upon object destruction.
-
-	:param fd: file descriptor
-	"""
-	def __init__(self, fd):
-		self._fd = fd
-		self.closed = False
-
-	def fileno(self):
-		return self._fd
-
-	def close(self):
-		"""Ensure `fd` is closed; operation is idempotent and will call :func:`os.close` exactly once."""
-		if not self.closed:
-			os.close(self._fd)
-			self.closed = True
-
-	def __del__(self):
-		self.close()
 
 
 class Flow(abc.ABC):
@@ -84,7 +62,7 @@ class Flow(abc.ABC):
 		"""
 		Expose flow as a raw file descriptor.
 
-		:returns: a :class:`.FileDesc` instance
+		:returns: a file-like object backed by a file descriptor
 		"""
 
 	@abc.abstractmethod
@@ -92,7 +70,7 @@ class Flow(abc.ABC):
 		"""
 		Expose flow as a UNIX pipe.
 
-		:returns: a :class:`.FileDesc` of the read end of a UNIX pipe
+		:returns: a file-like object backed by the read end of a UNIX pipe
 		"""
 
 	@abc.abstractmethod
@@ -112,7 +90,7 @@ class _FdFlow(Flow):
 	"""
 	Base class for flow sourced from a file descriptor.
 
-	:param f: :class:`FileDesc`-like object
+	:param f: file-like object backed by a file descriptor
 	"""
 	def __init__(self, f):
 		super().__init__()
@@ -160,14 +138,14 @@ class PipeFlow(_FdFlow):
 	"""
 	Flow sourced from the read end of a UNIX pipe.
 
-	:param f: :class:`FileDesc`-like descriptor of the read end of the pipe
+	:param f: file-like object backed by a file descriptor of the read end of the pipe
 	"""
 	def connect_fd(self):
 		return self.connect_pipe()
 
 	def connect_pipe(self):
 		if self.stats:
-			r, w = map(FileDesc, os.pipe())
+			r, w = map(io.FileIO, os.pipe(), ('r', 'w'))
 			self._pump = self._pipe_pump(self._f, w)
 			self._count = 0
 			return r
@@ -180,7 +158,7 @@ class FileFlow(_FdFlow):
 	"""
 	Flow sourced from a locally opened file.
 
-	:param f: :class:`FileDesc`-like object
+	:param f: file-like object backed by a file descriptor
 	"""
 	def connect_fd(self):
 		if self.stats:
@@ -190,7 +168,7 @@ class FileFlow(_FdFlow):
 			return self._f
 
 	def connect_pipe(self):
-		r, w = map(FileDesc, os.pipe())
+		r, w = map(io.FileIO, os.pipe(), ('r', 'w'))
 		self._pump = self._pipe_pump(self._f, w)
 		self._count = 0
 		return r

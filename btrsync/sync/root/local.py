@@ -9,6 +9,7 @@
 Btrfs roots implemented using locally executed ``btrfs`` commands.
 """
 
+import io
 import os
 import asyncio
 import posixpath
@@ -135,27 +136,26 @@ class LocalBtrfsRoot(BtrfsRoot):
 			parent = self._localpath(parent)
 		clones = (self._localpath(c) for c in clones)
 		await self._chk()
-		r, w = map(util.FileDesc, os.pipe())
+		r, w = map(io.FileIO, os.pipe(), ('r', 'w'))
 		return util.PipeFlow(r), self._dosend(w, btrfs.cmd.send(*tpaths, parent=parent, clones=clones))
 
-	async def _dosend(self, fildes, cmd):
+	async def _dosend(self, f, cmd):
 		try:
-			await self._run_checked(cmd, msg=cmd.shellify(), stdin=cmdex.DEVNULL, stdout=fildes.fileno())
+			await self._run_checked(cmd, msg=cmd.shellify(), stdin=cmdex.DEVNULL, stdout=f)
 		finally:
-			fildes.close()
+			f.close()
 
 	async def receive(self, flow, path='.'):
 		tpath = self._localpath(path)
 		await self._chk()
 		return self._dorecv(tpath, flow.connect_fd())
 
-	async def _dorecv(self, tpath, fildes):
+	async def _dorecv(self, tpath, f):
 		cmd = btrfs.cmd.receive(tpath)
 		if self.create_recvpath:
 			mkdir = util.Cmd('mkdir', ['-p', tpath])
 			await self._run_checked(mkdir, msg=mkdir.shellify())
-		fildes.closed = True
-		await self._run_checked(cmd, msg=cmd.shellify(), stdin=fildes.fileno())
+		await self._run_checked(cmd, msg=cmd.shellify(), stdin=f)
 
 
 def LocalRoot(*, sudo=False):
