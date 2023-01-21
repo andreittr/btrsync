@@ -64,30 +64,35 @@ The implementation of the [btrsync CLI](btrsync/cli.py) provides an extensive ex
 See the [API Reference](https://btrsync.readthedocs.io/en/latest/api.html) section of the documentation.
 
 ## Development
+### Branches
+- `main`: tracks the latest tagged release
+- `dev`: pre-release features and fixes
+
+### Make reference
 Running `make` with no arguments will:
 1. Run the unit tests and (if passing) produce coverage information under `htmlcov/`
 1. Build the HTML documentation under `doc/build/html/`
 1. Build a Python source distribution (sdist) and wheel under `dist/`
 
-### Running Tests
+#### Running Tests
 Unit tests use the Python standard library [unittest](https://docs.python.org/3/library/unittest.html) module.
 Coverage measurements require [Coverage.py](https://github.com/nedbat/coveragepy).
 - `make test` runs all unit tests
 - `make cov` runs all unit tests while collecting coverage information
 - `make htmlcov` creates a HTML coverage report under `htmlcov/`, running the coverage measurements as needed
 
-### Building Documentation
+#### Building Documentation
 Building the documentation requires [Sphinx](https://www.sphinx-doc.org).
 - `make doc` builds the default HTML documentation
 - `make -C doc/` lists more formats to build the documentation in (e.g., plain text, epub)
 
-### Build & Install Distributables
+#### Build & Install Distributables
 Building the source distribution (sdist) and wheel requires [build](https://github.com/pypa/build).
 Installation requires [pip](https://pip.pypa.io/).
 - `make dist` builds both source distribution and wheel under `dist/`
 - `make install` installs the built wheel with `pip` (forcefully replacing any previously installed version)
 
-### Cleanup
+#### Cleanup
 - `make cleanpy` removes Python compiled bytecode files (`__pycache__`)
 - `make cleancov` removes collected coverage information and generated coverage report under `htmlcov/`
 - `make cleandist` removes the distribution packages under `dist/`
