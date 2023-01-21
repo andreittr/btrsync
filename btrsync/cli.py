@@ -372,7 +372,7 @@ async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts
 				break
 		# Go time
 		if not await s.sync(trans.transf, **o):
-			break
+			raise RuntimeError()
 
 
 def process_args(cliargs):
