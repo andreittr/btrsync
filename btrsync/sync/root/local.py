@@ -68,9 +68,10 @@ class LocalBtrfsRoot(BtrfsRoot):
 		return (await cmdex.ex_out(*cls.wrapcmds(cmds), **kwargs))[-1]
 
 	@classmethod
-	async def _run_checked(cls, *cmds, msg='', **kwargs):
+	async def _run_checked(cls, *cmds, **kwargs):
 		ret, (stdout, stderr) = await cls._run(*cmds, **kwargs)
 		if ret != 0:
+			msg = ' | '.join(c.shellify() for c in cmds)
 			raise BtrfsError(msg, stderr.decode('utf-8').rstrip())
 		return ret, (stdout, stderr)
 
@@ -103,10 +104,7 @@ class LocalBtrfsRoot(BtrfsRoot):
 
 	async def _chk(self):
 		if self._fsroot is None:
-			cmd = btrfs.cmd.show(self.localroot)
-			ret, (stdout, stderr) = await self._run_checked(
-				cmd, msg=cmd.shellify(), stdin=cmdex.DEVNULL
-			)
+			ret, (stdout, stderr) = await self._run_checked(btrfs.cmd.show(self.localroot), stdin=cmdex.DEVNULL)
 			rp, stats = btrfs.parse.Show.from_stdout(stdout)
 			self._fsroot = posixpath.join(btrfs.FSTREE, '' if rp == '/' else rp)
 
@@ -115,9 +113,9 @@ class LocalBtrfsRoot(BtrfsRoot):
 		alcmd = btrfs.cmd.list(self.localroot, list_all=not self._isolated, readonly=False, fields='uqR')
 		rocmd = btrfs.cmd.list(self.localroot, list_all=not self._strict, readonly=self.readonly, fields='u')
 
-		ret, (stdout, stderr) = await self._run_checked(rocmd, msg=rocmd.shellify(), stdin=cmdex.DEVNULL)
+		ret, (stdout, stderr) = await self._run_checked(rocmd, stdin=cmdex.DEVNULL)
 		rvs = util.index(btrfs.parse.List.from_stdout(stdout), lambda v: v['uuid'])[0]
-		ret, (stdout, stderr) = await self._run_checked(alcmd, msg=alcmd.shellify(), stdin=cmdex.DEVNULL)
+		ret, (stdout, stderr) = await self._run_checked(alcmd, stdin=cmdex.DEVNULL)
 		allvols = btrfs.relpaths(btrfs.parse.List.from_stdout(stdout), self._fsroot)
 
 		ct = btrfs.COWTree(allvols, lambda v: v['uuid'] in rvs and not v['path'].startswith(btrfs.FSTREE))
@@ -125,9 +123,8 @@ class LocalBtrfsRoot(BtrfsRoot):
 
 	async def show(self, path='.'):
 		tpath = self._localpath(path)
-		cmd = btrfs.cmd.show(tpath)
 		await self._chk()
-		ret, (stdout, stderr) = await self._run_checked(cmd, msg=cmd.shellify(), stdin=cmdex.DEVNULL)
+		ret, (stdout, stderr) = await self._run_checked(btrfs.cmd.show(tpath), stdin=cmdex.DEVNULL)
 		return btrfs.parse.Show.from_stdout(stdout)
 
 	async def send(self, *paths, parent=None, clones=[]):
@@ -141,7 +138,7 @@ class LocalBtrfsRoot(BtrfsRoot):
 
 	async def _dosend(self, f, cmd):
 		try:
-			await self._run_checked(cmd, msg=cmd.shellify(), stdin=cmdex.DEVNULL, stdout=f)
+			await self._run_checked(cmd, stdin=cmdex.DEVNULL, stdout=f)
 		finally:
 			f.close()
 
@@ -151,11 +148,9 @@ class LocalBtrfsRoot(BtrfsRoot):
 		return self._dorecv(tpath, flow.connect_fd())
 
 	async def _dorecv(self, tpath, f):
-		cmd = btrfs.cmd.receive(tpath)
 		if self.create_recvpath:
-			mkdir = util.Cmd('mkdir', ['-p', tpath])
-			await self._run_checked(mkdir, msg=mkdir.shellify())
-		await self._run_checked(cmd, msg=cmd.shellify(), stdin=f)
+			await self._run_checked(util.Cmd('mkdir', ['-p', tpath]))
+		await self._run_checked(btrfs.cmd.receive(tpath), stdin=f)
 
 
 def LocalRoot(*, sudo=False):
