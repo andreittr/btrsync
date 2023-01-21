@@ -67,6 +67,7 @@ See the [API Reference](https://btrsync.readthedocs.io/en/latest/api.html) secti
 ### Branches
 - `main`: tracks the latest tagged release
 - `dev`: pre-release features and fixes
+- `post-VERSION`: maintenance branch for VERSION with backported fixes
 
 ### Make reference
 Running `make` with no arguments will:
