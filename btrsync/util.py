@@ -80,12 +80,24 @@ class Flow(abc.ABC):
 			return self._pump
 
 	@abc.abstractmethod
+	def connect_fd(self):
+		"""
+		Expose flow as a raw file descriptor.
+
+		:returns: a :class:`.FileDesc` instance
+		"""
+
+	@abc.abstractmethod
 	def connect_pipe(self):
 		"""
 		Expose flow as a UNIX pipe.
 
 		:returns: a :class:`.FileDesc` of the read end of a UNIX pipe
 		"""
+
+	@abc.abstractmethod
+	def connect_to_fd(self, f):
+		"""Direct flow to file-like object `f` that provides a file descriptor."""
 
 
 def _splice(r, w, n):
@@ -100,11 +112,11 @@ class PipeFlow(Flow):
 	"""
 	Flow sourced from the read end of a UNIX pipe.
 
-	:param rfildes: :class:`FileDesc`-like descriptor of the read end of the pipe
+	:param f: :class:`FileDesc`-like descriptor of the read end of the pipe
 	"""
-	def __init__(self, rfildes):
+	def __init__(self, f):
 		super().__init__()
-		self._r = rfildes
+		self._r = f
 		self._spl = None
 
 	@staticmethod
@@ -140,6 +152,9 @@ class PipeFlow(Flow):
 			r.close()
 			w.close()
 
+	def connect_fd(self):
+		return self.connect_pipe()
+
 	def connect_pipe(self):
 		if self.stats:
 			r, w = map(FileDesc, os.pipe())
@@ -149,6 +164,10 @@ class PipeFlow(Flow):
 		else:
 			self._pump = self._nop()
 			return self._r
+
+	def connect_to_fd(self, fd):
+		self._pump = self._pipe_pump(self._r, fd)
+		self._count = 0
 
 
 class Cmd(namedtuple('Cmd', ['prg', 'args'], defaults=((),))):

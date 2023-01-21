@@ -147,7 +147,7 @@ class LocalBtrfsRoot(BtrfsRoot):
 	async def receive(self, flow, path='.'):
 		tpath = self._localpath(path)
 		await self._chk()
-		return self._dorecv(tpath, flow.connect_pipe())
+		return self._dorecv(tpath, flow.connect_fd())
 
 	async def _dorecv(self, tpath, fildes):
 		cmd = btrfs.cmd.receive(tpath)
