@@ -108,23 +108,24 @@ def _splice(r, w, n):
 	return len(d)
 
 
-class PipeFlow(Flow):
+class _FdFlow(Flow):
 	"""
-	Flow sourced from the read end of a UNIX pipe.
+	Base class for flow sourced from a file descriptor.
 
-	:param f: :class:`FileDesc`-like descriptor of the read end of the pipe
+	:param f: :class:`FileDesc`-like object
 	"""
 	def __init__(self, f):
 		super().__init__()
-		self._r = f
-		self._spl = None
+		self._f = f
 
 	@staticmethod
 	async def _nop():
 		pass
 
 	def _splice(self, r, w, n):
-		if self._spl is None:
+		try:
+			return self._spl(r, w, n)
+		except AttributeError:
 			try:
 				r = os.splice(r, w, n)
 				self._spl = os.splice
@@ -132,8 +133,6 @@ class PipeFlow(Flow):
 				r = _splice(r, w, n)
 				self._spl = _splice
 			return r
-		else:
-			return self._spl(r, w, n)
 
 	async def _pipe_pump(self, r, w):
 		"""Byte pump reading from `r` into `w` and tallying the byte count into :attr:`.count`."""
@@ -152,22 +151,49 @@ class PipeFlow(Flow):
 			r.close()
 			w.close()
 
+	def connect_to_fd(self, f):
+		self._pump = self._pipe_pump(self._f, f)
+		self._count = 0
+
+
+class PipeFlow(_FdFlow):
+	"""
+	Flow sourced from the read end of a UNIX pipe.
+
+	:param f: :class:`FileDesc`-like descriptor of the read end of the pipe
+	"""
 	def connect_fd(self):
 		return self.connect_pipe()
 
 	def connect_pipe(self):
 		if self.stats:
 			r, w = map(FileDesc, os.pipe())
-			self._pump = self._pipe_pump(self._r, w)
+			self._pump = self._pipe_pump(self._f, w)
 			self._count = 0
 			return r
 		else:
 			self._pump = self._nop()
-			return self._r
+			return self._f
 
-	def connect_to_fd(self, fd):
-		self._pump = self._pipe_pump(self._r, fd)
+
+class FileFlow(_FdFlow):
+	"""
+	Flow sourced from a locally opened file.
+
+	:param f: :class:`FileDesc`-like object
+	"""
+	def connect_fd(self):
+		if self.stats:
+			return self.connect_pipe()
+		else:
+			self._pump = self._nop()
+			return self._f
+
+	def connect_pipe(self):
+		r, w = map(FileDesc, os.pipe())
+		self._pump = self._pipe_pump(self._f, w)
 		self._count = 0
+		return r
 
 
 class Cmd(namedtuple('Cmd', ['prg', 'args'], defaults=((),))):
