@@ -85,6 +85,14 @@ class Flow(abc.ABC):
 		"""
 
 
+def _splice(r, w, n):
+	"""Fallback for :func:`os.splice`."""
+	d = os.read(r, n)
+	if d:
+		os.write(w, d)
+	return len(d)
+
+
 class PipeFlow(Flow):
 	"""
 	Flow sourced from the read end of a UNIX pipe.
@@ -94,20 +102,23 @@ class PipeFlow(Flow):
 	def __init__(self, rfildes):
 		super().__init__()
 		self._r = rfildes
+		self._spl = None
 
 	@staticmethod
 	async def _nop():
 		pass
 
-	try:
-		_splice = os.splice
-	except AttributeError:
-		@staticmethod
-		def _splice(r, w, n):
-			d = os.read(r, n)
-			if d:
-				os.write(w, d)
-			return len(d)
+	def _splice(self, r, w, n):
+		if self._spl is None:
+			try:
+				r = os.splice(r, w, n)
+				self._spl = os.splice
+			except (AttributeError, OSError):
+				r = _splice(r, w, n)
+				self._spl = _splice
+			return r
+		else:
+			return self._spl(r, w, n)
 
 	async def _pipe_pump(self, r, w):
 		"""Byte pump reading from `r` into `w` and tallying the byte count into :attr:`.count`."""
