@@ -26,13 +26,16 @@ class FileDesc:
 	:param fd: file descriptor
 	"""
 	def __init__(self, fd):
-		self.fd = fd
+		self._fd = fd
 		self.closed = False
+
+	def fileno(self):
+		return self._fd
 
 	def close(self):
 		"""Ensure `fd` is closed; operation is idempotent and will call :func:`os.close` exactly once."""
 		if not self.closed:
-			os.close(self.fd)
+			os.close(self._fd)
 			self.closed = True
 
 	def __del__(self):
@@ -81,7 +84,7 @@ class Flow(abc.ABC):
 		"""
 		Expose flow as a UNIX pipe.
 
-		:returns: an integer file descriptor of the read end of a UNIX pipe
+		:returns: a :class:`.FileDesc` of the read end of a UNIX pipe
 		"""
 
 
@@ -132,7 +135,7 @@ class PipeFlow(Flow):
 				c += n
 				self._count = c
 		try:
-			await asyncio.to_thread(fdpump, r.fd, w.fd)
+			await asyncio.to_thread(fdpump, r.fileno(), w.fileno())
 		finally:
 			r.close()
 			w.close()

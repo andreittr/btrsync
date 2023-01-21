@@ -140,7 +140,7 @@ class LocalBtrfsRoot(BtrfsRoot):
 
 	async def _dosend(self, fildes, cmd):
 		try:
-			await self._run_checked(cmd, msg=cmd.shellify(), stdin=cmdex.DEVNULL, stdout=fildes.fd)
+			await self._run_checked(cmd, msg=cmd.shellify(), stdin=cmdex.DEVNULL, stdout=fildes.fileno())
 		finally:
 			fildes.close()
 
@@ -155,7 +155,7 @@ class LocalBtrfsRoot(BtrfsRoot):
 			mkdir = util.Cmd('mkdir', ['-p', tpath])
 			await self._run_checked(mkdir, msg=mkdir.shellify())
 		fildes.closed = True
-		await self._run_checked(cmd, msg=cmd.shellify(), stdin=fildes.fd)
+		await self._run_checked(cmd, msg=cmd.shellify(), stdin=fildes.fileno())
 
 
 def LocalRoot(*, sudo=False):
