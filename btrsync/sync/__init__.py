@@ -193,13 +193,14 @@ class Transfer:
 		if erred:
 			raise asyncio.CancelledError()
 
-	async def _wait_tasks(self, *tasks):
+	async def _try_gather(self, *coroutines):
 		"""
-		Try waiting for all `tasks`, canceling all upon error.
+		Try running and waiting for all `coroutines`, canceling all upon error.
 
 		Exceptions raised by the tasks will be logged by :meth:`err`.
 		:raises: asyncio.CancelledError if any tasks raise an exception
 		"""
+		tasks = map(asyncio.create_task, coroutines)
 		try:
 			await asyncio.gather(*tasks)
 		except BaseException as e:
@@ -240,7 +241,7 @@ class Transfer:
 		volpaths, parent = self._sendpaths(vols, par)
 		flow, scoro = await self._try(src.send(*volpaths, parent=parent), *args)
 		dcoro = await self._try(dst.receive(flow, self._recvpath(volpaths)))
-		await self._wait_tasks(scoro, dcoro, flow.pump())
+		await self._try_gather(scoro, dcoro, flow.pump())
 		await self._try(self.report_done(*args))
 
 
@@ -293,7 +294,7 @@ class ProgressTransfer(Transfer):
 		dcoro = await self._try(dst.receive(flow, self._recvpath(volpaths)))
 		prog = asyncio.create_task(self.progress(flow, seq))
 		try:
-			await self._wait_tasks(scoro, dcoro, flow.pump())
+			await self._try_gather(scoro, dcoro, flow.pump())
 		finally:
 			await self._collect(prog)
 		await self._try(self.report_done(*args))
