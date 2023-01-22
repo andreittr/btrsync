@@ -33,7 +33,7 @@ class COWTree:
 			if vol['_cowcheck']:
 				pq = vol['_cowpreq']
 				if pq is None:
-					self.roots.append(vol)
+					self._roots.append(vol)
 				else:
 					pq['_cowsucc'].append(vol)
 
@@ -75,7 +75,7 @@ class COWTree:
 		preq_waitlist = defaultdict(list)
 
 		self.vols = {}
-		self.roots = []
+		self._roots = []
 
 		_check = (lambda v: True) if check is None else check
 
@@ -109,6 +109,11 @@ class COWTree:
 				_handle_preq(vol)
 				_finish(vol)
 		assert(not preq_waitlist)
+
+	@property
+	def roots(self):
+		"""Roots of the computed COW hierarchy."""
+		return self._roots
 
 	@staticmethod
 	def dfs(node):
