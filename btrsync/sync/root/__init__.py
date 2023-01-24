@@ -21,6 +21,16 @@ class BtrfsError(Exception):
 
 class BtrfsRoot(abc.ABC):
 	"""Abstract base class for implementing btrfs roots."""
+	_args = ()
+	_kwargs = ()
+
+	def _reprargs(self):
+		return ', '.join((', '.join(f'{repr(getattr(self, arg))}' for arg in self._args),
+		                  ', '.join(f'{arg}={repr(getattr(self, arg))}' for arg in self._kwargs)))
+
+	def __repr__(self):
+		return f'{type(self).__name__}({self._reprargs()})'
+
 	@classmethod
 	@abc.abstractmethod
 	async def get_root(cls, path, **kwargs):
@@ -38,6 +48,11 @@ class BtrfsRoot(abc.ABC):
 	@abc.abstractmethod
 	async def is_root(cls, path):
 		"""Return whether `path` points to a btrfs subvolume root or not."""
+
+	@property
+	@abc.abstractmethod
+	def name(self):
+		"""Human-readable name identifying this root and the location it refers to."""
 
 	@abc.abstractmethod
 	async def list(self):

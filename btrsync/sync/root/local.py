@@ -39,24 +39,21 @@ class LocalBtrfsRoot(BtrfsRoot):
 	"""
 	_SCOPES = ('all', 'strict', 'isolated')
 	def __init__(self, rootpath, *, scope='all', readonly=True, create_recvpath=False):
-		self.localroot = rootpath
+		self.rootpath = rootpath
 		if scope not in self._SCOPES:
 			raise ValueError(f"`scope' must be one of {self._SCOPES}")
 		self.scope = scope
 		self.readonly = readonly
 		self.create_recvpath = create_recvpath
-		self._args = ('localroot',)
+		self._args = ('rootpath',)
 		self._kwargs = ('scope', 'readonly', 'create_recvpath')
 		self._isolated = scope == 'isolated'
 		self._strict = scope != 'all'
 		self._fsroot = None
 
-	def _reprargs(self):
-		return ', '.join((', '.join(f'{repr(getattr(self, arg))}' for arg in self._args),
-		                  ', '.join(f'{arg}={repr(getattr(self, arg))}' for arg in self._kwargs)))
-
-	def __repr__(self):
-		return f'{type(self).__name__}({self._reprargs()})'
+	@property
+	def name(self):
+		return self.rootpath
 
 	@staticmethod
 	def wrapcmds(cmds):
@@ -100,18 +97,18 @@ class LocalBtrfsRoot(BtrfsRoot):
 	def _localpath(self, path):
 		if not util.is_subpath(path):
 			raise ValueError('Path must be relative and cannot escape its base directory')
-		return os.path.join(self.localroot, path)
+		return os.path.join(self.rootpath, path)
 
 	async def _chk(self):
 		if self._fsroot is None:
-			ret, (stdout, stderr) = await self._run_checked(btrfs.cmd.show(self.localroot), stdin=cmdex.DEVNULL)
+			ret, (stdout, stderr) = await self._run_checked(btrfs.cmd.show(self.rootpath), stdin=cmdex.DEVNULL)
 			rp, stats = btrfs.parse.Show.from_stdout(stdout)
 			self._fsroot = posixpath.join(btrfs.FSTREE, '' if rp == '/' else rp)
 
 	async def list(self):
 		await self._chk()
-		alcmd = btrfs.cmd.list(self.localroot, list_all=not self._isolated, readonly=False, fields='uqR')
-		rocmd = btrfs.cmd.list(self.localroot, list_all=not self._strict, readonly=self.readonly, fields='u')
+		alcmd = btrfs.cmd.list(self.rootpath, list_all=not self._isolated, readonly=False, fields='uqR')
+		rocmd = btrfs.cmd.list(self.rootpath, list_all=not self._strict, readonly=self.readonly, fields='u')
 
 		ret, (stdout, stderr) = await self._run_checked(rocmd, stdin=cmdex.DEVNULL)
 		rvs = util.index(btrfs.parse.List.from_stdout(stdout), lambda v: v['uuid'])[0]

@@ -52,4 +52,9 @@ def SSHRoot(host, *, user=None, port=None, pkpath=None, compress=False, sudo=Fal
 		def __repr__(self):
 			ssh_args = ', '.join(f'{arg}={val!r}' for arg, val in _rargs.items())
 			return f'SSHRoot({ssh_args})({self._reprargs()})'
+
+		@property
+		def name(self):
+			return (f'{user}@' if user is not None else '') + f'{host}:{self.rootpath}'
+
 	return SSHBtrfsRoot

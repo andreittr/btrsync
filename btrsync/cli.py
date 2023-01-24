@@ -346,7 +346,7 @@ async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts
 			t.cancel()
 		await asyncio.wait(stasks)
 		raise
-	for (sroot, matcher), cursrc in zip(sources, srcs):
+	for sroot, matcher in sources:
 		if incls is not None:
 			matcher.include(*incls)
 		matcher.exclude(*excls)
@@ -358,7 +358,7 @@ async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts
 		o.update(syncopts)
 		# Confirmation
 		if auto is not True:
-			conf = confirm(cursrc, recvpath=recvpath, **transopts)
+			conf = confirm(sroot.name, recvpath=recvpath, **transopts)
 			conf.head()
 			if not await s.sync(conf, **o):
 				break
