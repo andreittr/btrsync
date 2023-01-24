@@ -300,7 +300,7 @@ class Confirm(sync.ProgressTransfer):
 
 	def confirm(self):
 		"""
-		Called after :meth:`.preview` to give final confirmation.
+		Called after :meth:`preview` to give final confirmation.
 
 		:returns: ``'Y'`` to proceed with sync,
 			``'S'`` to skip the current source and continue with the next, and

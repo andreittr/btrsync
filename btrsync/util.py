@@ -25,8 +25,8 @@ class Flow(abc.ABC):
 	Abstract base class for a flow of bytes that can be exposed through different interfaces.
 
 	Flows are set up to expose a specific interface with one of the ``connect_*`` methods.
-	Subsequently, running the coroutine returned by :meth:`.pump` handles I/O and any necessary processing.
-	A tally of transmitted bytes can be found in :attr:`.count` if :attr:`.stats` is :const:`True`.
+	Subsequently, running the coroutine returned by :meth:`pump` handles I/O and any necessary processing.
+	A tally of transmitted bytes can be found in :attr:`count` if :attr:`stats` is :const:`True`.
 	"""
 	def __init__(self):
 		self._stats = False
@@ -35,7 +35,7 @@ class Flow(abc.ABC):
 
 	@property
 	def stats(self):
-		"""If :const:`True`, :attr:`.count` will tally bytes transmitted."""
+		"""If :const:`True`, :attr:`count` will tally bytes transmitted."""
 		return self._stats
 	@stats.setter
 	def stats(self, val):
@@ -43,7 +43,7 @@ class Flow(abc.ABC):
 
 	@property
 	def count(self):
-		"""Total bytes transmitted if :attr:`.stats` is :const:`True`, :const:`None` otherwise."""
+		"""Total bytes transmitted if :attr:`stats` is :const:`True`, :const:`None` otherwise."""
 		return self._count
 
 	def pump(self):
@@ -113,7 +113,7 @@ class _FdFlow(Flow):
 			return r
 
 	async def _pipe_pump(self, r, w):
-		"""Byte pump reading from `r` into `w` and tallying the byte count into :attr:`.count`."""
+		"""Byte pump reading from `r` into `w` and tallying the byte count into :attr:`count`."""
 		def fdpump(r, w):
 			NBYTES = 2**20
 			c = 0
@@ -212,7 +212,7 @@ class Cmd(namedtuple('Cmd', ['prg', 'args'], defaults=((),))):
 
 		:param outer: the outer command that receives `self` as arguments
 		:param shellfmt: if :const:`True`, pass a shell-escaped form of `self` as a single last argument to `outer`;
-		                 if :const:`False`, :attr:`.prg` along with :attr:`.args` are passed as individual arguments to `outer`
+		                 if :const:`False`, :attr:`prg` along with :attr:`args` are passed as individual arguments to `outer`
 		:param endmark: if not :const:`None`, append `endmark` as final argument to `outer`, after `self`
 		:returns: the new wrapped :class:`.Cmd` instance
 		"""

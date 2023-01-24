@@ -34,7 +34,7 @@ class LocalBtrfsRoot(BtrfsRoot):
 		``'strict'`` includes only subvolumes directly contained in `rootpath`, and
 		``'isolated'`` behaves like ``'strict'``, but also excludes other subvolumes from computing parentage
 	:param readonly: if :const:`True`, list only readonly subvolumes
-	:param create_recvpath: if :const:`True`, ensure the `path` passed to :meth:`.receive` exists
+	:param create_recvpath: if :const:`True`, ensure the `path` passed to :meth:`receive` exists
 	:raises ValueError: for an invalid value of `scope`
 	"""
 	_SCOPES = ('all', 'strict', 'isolated')

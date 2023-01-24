@@ -86,11 +86,11 @@ class BtrSync:
 		:param batch: if :const:`True`, batch together multiple volumes into a single transfer
 		:param parallel: if :const:`True`, run independent transfers in parallel
 		:param transfer_existing: if :const:`True`, consider for transfer volumes that already exist on the destination
-		:param volgroups: override for :meth:`.volgroups`
-		:param target: override for :meth:`.target`
-		:param parent: override for :meth:`.parent`
-		:param check: override for :meth:`.check`
-		:param stop: override for :meth:`.stop`
+		:param volgroups: override for :meth:`volgroups`
+		:param target: override for :meth:`target`
+		:param parent: override for :meth:`parent`
+		:param check: override for :meth:`check`
+		:param stop: override for :meth:`stop`
 		:returns: :const:`True` if sync successful, :const:`False` if errors occured
 		"""
 		volgroups = self.volgroups if volgroups is None else volgroups
@@ -174,7 +174,7 @@ class Transfer:
 		"""
 		Try awaiting awaitable `aw`, converting any exceptions to :exc:`asyncio.CancelledError`.
 
-		Exceptions raised by `aw` will be logged by :meth:`.err`.
+		Exceptions raised by `aw` will be logged by :meth:`err`.
 		"""
 		try:
 			return await aw
@@ -240,7 +240,7 @@ class Transfer:
 		:param par: the parent subvolume to use for an incremental transfer
 		:param src: the source btrfs root
 		:param dst: the destination btrfs root
-		:raises asyncio.CancelledError: if any error has occured, after logging it with :meth:`.err`
+		:raises asyncio.CancelledError: if any error has occured, after logging it with :meth:`err`
 		"""
 		args = (vols, par, src, dst)
 		await self.try_await(self.report(*args))
@@ -289,7 +289,7 @@ class ProgressTransfer(Transfer):
 		:param par: the parent subvolume to use for an incremental transfer
 		:param src: the source btrfs root
 		:param dst: the destination btrfs root
-		:raises asyncio.CancelledError: if any error has occurred, after logging it with :meth:`.err`
+		:raises asyncio.CancelledError: if any error has occurred, after logging it with :meth:`err`
 		"""
 		args = (vols, par, src, dst)
 		seq = itertools.cycle(self.prog_seq)
