@@ -21,6 +21,40 @@ FSTREE = '<FS_TREE>'
 """Path of the btrfs filesystem root, as printed by ``btrfs-progs``."""
 
 
+class Vol(dict):
+	"""
+	Helper class for manipulating btrfs subvolumes.
+
+	Subvolumes are dicts of (property: value) pairs.
+	The properties exposed are those provided by ``btrfs subvolume list``
+	with the addition of computed COW parent and successors.
+	"""
+	_P = '_cowpreq'
+	_S = '_cowsucc'
+
+	def __init__(self, *args, parent=None, succs=[], **kwargs):
+		super().__init__(*args, **kwargs)
+		self.parent = parent
+		self.succs.extend(succs)
+
+	@property
+	def parent(self):
+		"""COW parent of this subvolume, or :const:`None` if self-standing."""
+		return self[self._P]
+	@parent.setter
+	def parent(self, v):
+		self[self._P] = v
+
+	@property
+	def succs(self):
+		"""Volumes for which this subvolume is a COW parent."""
+		try:
+			return self[self._S]
+		except KeyError:
+			self[self._S] = []
+			return self[self._S]
+
+
 class COWTree:
 	"""
 	Build a hierarchy of btrfs subvolumes based on snapshotting (COW) parentage.
@@ -30,24 +64,24 @@ class COWTree:
 	"""
 	def __init__(self, subvols, check=None):
 		def _finish(vol):
-			if vol['_cowcheck']:
-				pq = vol['_cowpreq']
+			if vol['_check']:
+				pq = vol.parent
 				if pq is None:
 					self._roots.append(vol)
 				else:
-					pq['_cowsucc'].append(vol)
+					pq.succs.append(vol)
 
 		def _handle_preq(pq):
 			for vol in preq_waitlist[pq['uuid']]:
-				vol['_cowpreq'] = pq['_cowpreq']
+				vol.parent = pq.parent
 				_handle_preq(vol)
 				_finish(vol)
 			del preq_waitlist[pq['uuid']]
 
 		def _handle_sibtree(vol, *sibs, maxdepth=0):
 			for sib in util.bfs(lambda v: reversed(v['_chld']), *reversed(sibs), maxdepth=maxdepth):
-				if sib['_cowcheck']:
-					vol['_cowpreq'] = sib
+				if sib['_check']:
+					vol.parent = sib
 					return True
 			return False
 
@@ -55,7 +89,7 @@ class COWTree:
 			r = True
 			if not _handle_sibtree(vol, par, maxdepth=1):
 				try:
-					vol['_cowpreq'] = par['_cowpreq']
+					vol.parent = par.parent
 				except KeyError:
 					r = False
 			par['_chld'].append(vol)
@@ -80,14 +114,13 @@ class COWTree:
 		_check = (lambda v: True) if check is None else check
 
 		for volume in subvols:
-			vol = volume.copy()
-			vol['_cowcheck'] = _check(vol)
+			vol = Vol(volume)
+			vol['_check'] = _check(vol)
 			vol['_chld'] = []
-			vol['_cowsucc'] = []
 
 			puid = vol['parent_uuid']
 			if puid is None:
-				vol['_cowpreq'] = None
+				vol.parent = None
 				_finish(vol)
 			elif puid in self.vols:
 				if _handle_par(vol, self.vols[puid]):
@@ -104,7 +137,7 @@ class COWTree:
 			sibs = []
 			for vol in orphans:
 				if not _handle_sibtree(vol, *sibs, maxdepth=0):
-					vol['_cowpreq'] = None
+					vol.parent = None
 				sibs.append(vol)
 				_handle_preq(vol)
 				_finish(vol)
@@ -118,19 +151,19 @@ class COWTree:
 	@staticmethod
 	def dfs(node):
 		"""Iterate, in a depth-first search, over `node` and its COW descendants."""
-		return util.dfs(lambda v: v['_cowsucc'], node)
+		return util.dfs(lambda v: v.succs, node)
 
 	@staticmethod
 	def bfs(*nodes, **kwargs):
 		"""Iterate, in a breadth-first search, over `nodes` and their COW descendants."""
-		return util.bfs(lambda v: v['_cowsucc'], *nodes, **kwargs)
+		return util.bfs(lambda v: v.succs, *nodes, **kwargs)
 
 	@staticmethod
 	def ancestors(node):
 		"""Iterate over the COW ancestors of `node`, including itself."""
 		while node is not None:
 			yield node
-			node = node['_cowpreq']
+			node = node.parent
 
 	@staticmethod
 	def diff(aroots, broots, akeys, bkeys):
