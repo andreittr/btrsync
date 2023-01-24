@@ -315,13 +315,13 @@ class Confirm(sync.ProgressTransfer):
 		return r
 
 
-async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts,
-                     transfer, transopts, srootopts, srootargs, drootopts, drootargs):
+async def do_btrsync(*, src_coros, dst_coro, incls, excls, auto,
+                     confirm, syncer, syncopts, transfer, transopts):
 	"""
 	Perform btrsync from `srcs` to `dst`.
 
-	:param srcs: sequence of source locations
-	:param dst: destination location
+	:param src_coros: sequence of coroutines that return (source_root, matcher) pairs
+	:param dst_coro: coroutine that returns a (destination_root, receive_path) pair
 	:param incls: list of globs matching subvolumes to include in the sync
 	:param excls: list of globs matching subvolumes to exclude from the sync
 	:param auto: if :const:`False` do a dry run, if :const:`None` ask for confirmation, if :const:`True` proceed without asking
@@ -330,13 +330,9 @@ async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts
 	:param syncopts: keyword arguments to pass to `syncer`
 	:param transfer: :class:`btrsync.sync.Transfer`-like class to use for sync
 	:param transopts: keyword arguments to pass to `transfer`
-	:param srootopts: keyword arguments to pass to source btrfs root class factories
-	:param srootargs: keyword arguments to pass to source btrfs root classes
-	:param drootopts: keyword arguments to pass to the destination btrfs root class factory
-	:param drootargs: keyword arguments to pass to the destination btrfs root class
 	"""
-	dtask = asyncio.create_task(dest_root(dst, drootopts, drootargs))
-	stasks = [asyncio.create_task(src_root(s, srootopts, srootargs)) for s in srcs]
+	dtask = asyncio.create_task(dst_coro)
+	stasks = list(map(asyncio.create_task, src_coros))
 	try:
 		droot, recvpath = await dtask
 		trans = transfer(recvpath=recvpath, **transopts)
@@ -406,16 +402,19 @@ def process_args(cliargs):
 	transopts = {'replicate_dirs': cliargs.replicate_dirs}
 	if prog:
 		transopts['period'] = cliargs.progress_period
+
 	srootopts = {'sudo': cliargs.sudo or cliargs.sudo_src}
 	drootopts = {'sudo': cliargs.sudo or cliargs.sudo_dest}
 	srootargs = {}
 	if cliargs.scope is not None:
 		srootargs['scope'] = cliargs.scope
 	drootargs = {'create_recvpath': cliargs.create_destpath or cliargs.replicate_dirs}
+	src_coros = [src_root(s, srootopts, srootargs) for s in cliargs.src]
+	dst_coro = dest_root(cliargs.dst, drootopts, drootargs)
 
 	return {
-		'srcs': cliargs.src,
-		'dst': cliargs.dst,
+		'src_coros': src_coros,
+		'dst_coro': dst_coro,
 		'incls': cliargs.include,
 		'excls': cliargs.exclude,
 		'auto': cliargs.auto,
@@ -424,10 +423,6 @@ def process_args(cliargs):
 		'syncopts': {'batch': cliargs.batch, 'parallel': cliargs.parallel, 'transfer_existing': cliargs.existing},
 		'transfer': CliTransfer,
 		'transopts': transopts,
-		'srootopts': srootopts,
-		'srootargs': srootargs,
-		'drootopts': drootopts,
-		'drootargs': drootargs
 	}
 
 
