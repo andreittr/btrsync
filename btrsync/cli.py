@@ -360,7 +360,7 @@ async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts
 		if auto is not True:
 			conf = confirm(cursrc, recvpath=recvpath, **transopts)
 			conf.head()
-			if not await s.sync(conf.transf, **o):
+			if not await s.sync(conf, **o):
 				break
 			conf.preview()
 			if auto is False:
@@ -371,7 +371,7 @@ async def do_btrsync(*, srcs, dst, incls, excls, auto, confirm, syncer, syncopts
 			elif cont != 'Y':
 				break
 		# Go time
-		if not await s.sync(trans.transf, **o):
+		if not await s.sync(trans, **o):
 			raise RuntimeError()
 
 
@@ -397,6 +397,11 @@ def process_args(cliargs):
 
 	class CliConfirm(Confirm):
 		VERBOSE = cliargs.verbose
+
+		if cliargs.quiet < 2:
+			@staticmethod
+			def err(e, *args):
+				print('Error:', e, file=sys.stderr)
 
 	transopts = {'replicate_dirs': cliargs.replicate_dirs}
 	if prog:

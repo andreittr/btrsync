@@ -70,17 +70,19 @@ class BtrSync:
 		"""Called after `vols` have been synced; return :const:`True` if sync should immediately stop."""
 		return False
 
-	async def _refresh(self):
+	async def _refresh(self, trans):
 		"""Update the internal diff between source and destination roots."""
-		self.srcroots, self.dstroots = await asyncio.gather(self.src.list(), self.dst.list())
+		self.srcroots, self.dstroots = await trans.try_gather(self.src.list(), self.dst.list())
 		self.diff = btrfs.COWTree.diff(self.srcroots, self.dstroots, self.srckeys, self.dstkeys)
 
-	async def sync(self, transf, *, batch=False, parallel=False, transfer_existing=False,
+	async def sync(self, trans, *, batch=False, parallel=False, transfer_existing=False,
 	               volgroups=None, target=None, parent=None, check=None, stop=None):
 		"""
 		Perform synchronization of subvolumes.
 
-		:param transf: transfer function to perform the actual send/receive operations
+		Returns whether the sync was successful and all error handling is delegated to `trans`.
+
+		:param trans: :class:`.Transfer`-like object to perform the actual send/receive operations
 		:param batch: if :const:`True`, batch together multiple volumes into a single transfer
 		:param parallel: if :const:`True`, run independent transfers in parallel
 		:param transfer_existing: if :const:`True`, consider for transfer volumes that already exist on the destination
@@ -101,13 +103,13 @@ class BtrSync:
 			async def f(a):
 				r = await a
 				return (vols, r)
-			return f(transf(vols, par, self.src, self.dst))
+			return f(trans.transf(vols, par, self.src, self.dst))
 
 		def mark(vols):
 			for v in vols:
 				self.diff[0][v['uuid']].append(None)
 
-		await self._refresh()
+		await self._refresh(trans)
 		finish = False
 		erred = False
 		for volgr in volgroups(self.srcroots):
@@ -126,9 +128,9 @@ class BtrSync:
 				packs = (([x[0]], x[1]) for x in cand)
 			transfers = (tf(vols, par) for vols, par in packs)
 			transeq = asyncio.as_completed(transfers) if parallel else transfers
-			for trans in transeq:
+			for transop in transeq:
 				try:
-					vols, res = await trans
+					vols, res = await transop
 				except asyncio.CancelledError:
 					erred = True
 					if parallel:
@@ -147,7 +149,7 @@ class BtrSync:
 
 class Transfer:
 	"""
-	Base class implementing a transfer function as required by :meth:`.BtrSync.sync`.
+	Base class implementing a transfer as required by :meth:`.BtrSync.sync`.
 
 	:param recvpath: the path that transfers are received into
 	:param replicate_dirs: if :const:`True` adapt `recvpath` to recreate the sent volumes' directory structure
@@ -168,7 +170,7 @@ class Transfer:
 		"""Called when the transfer of volumes `vols` with parent `par` from `src` to `dst` has finished."""
 		pass
 
-	async def _try(self, aw, *err_args):
+	async def try_await(self, aw):
 		"""
 		Try awaiting awaitable `aw`, converting any exceptions to :exc:`asyncio.CancelledError`.
 
@@ -177,7 +179,7 @@ class Transfer:
 		try:
 			return await aw
 		except BaseException as e:
-			self.err(e, *err_args)
+			self.err(e)
 			raise asyncio.CancelledError() from e
 
 	async def _collect(self, *tasks):
@@ -193,16 +195,17 @@ class Transfer:
 		if erred:
 			raise asyncio.CancelledError()
 
-	async def _try_gather(self, *coroutines):
+	async def try_gather(self, *coroutines):
 		"""
 		Try running and waiting for all `coroutines`, canceling all upon error.
 
 		Exceptions raised by the tasks will be logged by :meth:`err`.
-		:raises: asyncio.CancelledError if any tasks raise an exception
+
+		:raises asyncio.CancelledError: if any tasks raise an exception
 		"""
 		tasks = map(asyncio.create_task, coroutines)
 		try:
-			await asyncio.gather(*tasks)
+			return await asyncio.gather(*tasks)
 		except BaseException as e:
 			self.err(e)
 			try:
@@ -240,12 +243,12 @@ class Transfer:
 		:raises asyncio.CancelledError: if any error has occured, after logging it with :meth:`.err`
 		"""
 		args = (vols, par, src, dst)
-		await self._try(self.report(*args))
+		await self.try_await(self.report(*args))
 		volpaths, parent, meta = self._sendpaths(vols, par)
-		flow, scoro = await self._try(src.send(*volpaths, parent=parent), *args)
-		dcoro = await self._try(dst.receive(flow, self._recvpath(volpaths), meta=meta))
-		await self._try_gather(scoro, dcoro, flow.pump())
-		await self._try(self.report_done(*args))
+		flow, scoro = await self.try_await(src.send(*volpaths, parent=parent))
+		dcoro = await self.try_await(dst.receive(flow, self._recvpath(volpaths), meta=meta))
+		await self.try_gather(scoro, dcoro, flow.pump())
+		await self.try_await(self.report_done(*args))
 
 
 class ProgressTransfer(Transfer):
@@ -291,16 +294,16 @@ class ProgressTransfer(Transfer):
 		args = (vols, par, src, dst)
 		seq = itertools.cycle(self.prog_seq)
 		volpaths, parent, meta = self._sendpaths(vols, par)
-		await self._try(self.report(*args))
-		flow, scoro = await self._try(src.send(*volpaths, parent=parent), *args)
+		await self.try_await(self.report(*args))
+		flow, scoro = await self.try_await(src.send(*volpaths, parent=parent))
 		flow.stats = True
-		dcoro = await self._try(dst.receive(flow, self._recvpath(volpaths), meta=meta))
+		dcoro = await self.try_await(dst.receive(flow, self._recvpath(volpaths), meta=meta))
 		prog = asyncio.create_task(self.progress(flow, seq))
 		try:
-			await self._try_gather(scoro, dcoro, flow.pump())
+			await self.try_gather(scoro, dcoro, flow.pump())
 		finally:
 			await self._collect(prog)
-		await self._try(self.report_done(*args))
+		await self.try_await(self.report_done(*args))
 
 
 from . import root
