@@ -325,5 +325,9 @@ def default_root(protocol):
 		return root.local.LocalRoot
 	elif protocol == 'ssh':
 		return root.ssh.SSHRoot
+	elif protocol == 'file':
+		return root.file.FileRoot
+	elif protocol == 'file-dump':
+		return root.file.DumpRoot
 	else:
 		raise ValueError('Unknown protocol', protocol)

@@ -86,4 +86,4 @@ class BtrfsRoot(abc.ABC):
 		"""
 
 
-from . import local, ssh
+from . import local, ssh, file
