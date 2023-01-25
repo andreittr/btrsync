@@ -278,7 +278,11 @@ class ProgressTransfer(Transfer):
 		cnt, prev = flow.count, 0
 		while True:
 			await self.report_progress(cnt, prev, seq)
-			await asyncio.sleep(self.period)
+			try:
+				await asyncio.sleep(self.period)
+			except:
+				await self.report_progress(flow.count, cnt, seq)
+				raise
 			cnt, prev = flow.count, cnt
 
 	async def transf(self, vols, par, src, dst):
