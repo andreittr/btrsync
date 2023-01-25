@@ -228,6 +228,15 @@ async def dest_root(loc, rootopts={}, rootargs={}):
 	return root, recvpath
 
 
+async def dump_root(odir, inner_coro=None, rootopts={}, rootargs={}):
+	"""Return a ``(root, receive_path)`` pair for dumping a stream to a local file."""
+	if inner_coro is not None:
+		sroot, _ = await inner_coro
+	else:
+		sroot = None
+	return sync.default_root('file-dump')(**rootopts)(odir, subroot=sroot, **rootargs), '.'
+
+
 async def src_root(loc, rootopts={}, rootargs={}):
 	"""Process a source location string, returning a tuple of ``(btrfs_root, matcher_instance)``."""
 	prot, largs, path = parse_root(loc)
@@ -411,6 +420,8 @@ def process_args(cliargs):
 	drootargs = {'create_recvpath': cliargs.create_destpath or cliargs.replicate_dirs}
 	src_coros = [src_root(s, srootopts, srootargs) for s in cliargs.src]
 	dst_coro = dest_root(cliargs.dst, drootopts, drootargs)
+	if cliargs.output_dir is not None:
+		dst_coro = dump_root(cliargs.output_dir, dst_coro, drootopts, drootargs)
 
 	return {
 		'src_coros': src_coros,
@@ -438,6 +449,9 @@ def cli_parser():
 	                    help='source location, may contain wildcards')
 	parser.add_argument('dst', metavar='DESTINATION',
 	                    help='destination location')
+
+	parser.add_argument('-o', '--output-dir', metavar='DIR',
+	                    help='dump the send streams into DIR instead of performing a receive at DESTINATION')
 
 	parser.add_argument('-x', '--exclude', action='append', metavar='GLOB', default=[],
 	                    help='exclude subvolumes matching GLOB')
