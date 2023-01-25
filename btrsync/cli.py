@@ -8,6 +8,7 @@
 """Command line interface to btrsync. Run as main with '-h' for usage information."""
 
 import re
+import os
 import sys
 import fnmatch
 import posixpath
@@ -240,8 +241,13 @@ async def dump_root(odir, inner_coro=None, rootopts={}, rootargs={}):
 async def src_root(loc, rootopts={}, rootargs={}):
 	"""Process a source location string, returning a tuple of ``(btrfs_root, matcher_instance)``."""
 	prot, largs, path = parse_root(loc)
+	if prot == 'local' and os.path.isfile(path):
+		prot = 'file'
 	rtype = sync.default_root(prot)(**largs, **rootopts)
-	if await rtype.is_root(path):
+	if prot == 'file':
+		root = rtype(path, **rootargs)
+		matcher = BaseMatch()
+	elif await rtype.is_root(path):
 		if path.endswith('/'):
 			root = rtype(path, **rootargs)
 			matcher = UnderGlob('*')
