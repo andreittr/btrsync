@@ -25,9 +25,13 @@ Alternatively, if you installed via ``pip``, you can directly run
 
 - arguments ending in ``/`` denote directories and match all subvolumes contained therein
 - arguments containing shell wildcards match as expected
-- non-directory arguments with no wildcards match subvolumes verbatim
+- arguments with no wildcards and not ending in ``/``:
+	- if pointing to a subvolume, matches that subvolume verbatim
+	- if pointing to a regular file, reads the btrfs send stream from file
 
 ``DESTINATION`` must reside on a btrfs filesystem.
+
+If the ``-o`` / ``--output-dir`` option is supplied the send streams will be saved locally instead of being received at ``DESTINATION``.
 
 Additionally, both ``SOURCE`` and ``DESTINATION`` arguments may:
 
