@@ -104,6 +104,8 @@ class _FdFlow(Flow):
 	def _splice(self, r, w, n):
 		try:
 			return self._spl(r, w, n)
+		except BrokenPipeError:
+			return 0
 		except AttributeError:
 			try:
 				r = os.splice(r, w, n)
