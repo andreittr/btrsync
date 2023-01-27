@@ -426,8 +426,13 @@ def process_args(cliargs):
 	drootargs = {'create_recvpath': cliargs.create_destpath or cliargs.replicate_dirs}
 	src_coros = [src_root(s, srootopts, srootargs) for s in cliargs.src]
 	dst_coro = dest_root(cliargs.dst, drootopts, drootargs)
-	if cliargs.output_dir is not None:
-		dst_coro = dump_root(cliargs.output_dir, dst_coro, drootopts, drootargs)
+	if cliargs.output_dir or cliargs.output_pipe:
+		dumpargs = drootargs.copy()
+		if cliargs.output_pipe:
+			dumpargs['dump_pipe'] = cliargs.output_pipe
+		if cliargs.output_ext:
+			dumpargs['ext'] = cliargs.output_ext
+		dst_coro = dump_root(cliargs.output_dir, dst_coro, drootopts, dumpargs)
 
 	return {
 		'src_coros': src_coros,
@@ -455,9 +460,6 @@ def cli_parser():
 	                    help='source location, may contain wildcards')
 	parser.add_argument('dst', metavar='DESTINATION',
 	                    help='destination location')
-
-	parser.add_argument('-o', '--output-dir', metavar='DIR',
-	                    help='dump the send streams into DIR instead of performing a receive at DESTINATION')
 
 	parser.add_argument('-x', '--exclude', action='append', metavar='GLOB', default=[],
 	                    help='exclude subvolumes matching GLOB')
@@ -492,6 +494,14 @@ def cli_parser():
 	                    help='batch multiple subvolumes into a single transfer, as possible')
 	parser.add_argument('-P', '--parallel', action='store_true',
 	                    help='run independent transfers in parallel')
+
+	parser.add_argument('-o', '--output-dir', metavar='DIR',
+	                    help='dump the send streams into DIR instead of performing a receive at DESTINATION')
+	parser.add_argument('-O', '--output-pipe', metavar='PIPELINE',
+	                    help='''pass the send stream through PIPELINE before dumping to file;
+	                    if supplied without --output-dir the output of PIPELINE is sent to stdout''')
+	parser.add_argument('-e', '--output-ext', metavar='EXT',
+	                    help='(requires --output-dir) append EXT to dump filenames')
 
 	parser.add_argument('-c', '--create-destpath', action='store_true',
 	                    help='create the path specified in DESTINATION if it does not exist')
