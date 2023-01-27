@@ -14,7 +14,8 @@ import os
 import asyncio
 import posixpath
 
-from . import BtrfsError, BtrfsRoot
+from . import BtrfsError
+from . import _exec
 
 from ... import util
 from ... import btrfs
@@ -24,7 +25,7 @@ from ... import cmdex
 SUDO = util.Cmd('sudo')
 
 
-class LocalBtrfsRoot(BtrfsRoot):
+class LocalBtrfsRoot(_exec.ExecBtrfsRoot):
 	"""
 	Btrfs root implemented using local execution of ``btrfs`` commands, anchored at `rootpath`.
 
@@ -54,23 +55,6 @@ class LocalBtrfsRoot(BtrfsRoot):
 	@property
 	def name(self):
 		return self.rootpath
-
-	@staticmethod
-	def wrapcmds(cmds):
-		"""Return `cmds` unchanged; override to customize executed commands."""
-		yield from cmds
-
-	@classmethod
-	async def _run(cls, *cmds, **kwargs):
-		return (await cmdex.ex_out(*cls.wrapcmds(cmds), **kwargs))[-1]
-
-	@classmethod
-	async def _run_checked(cls, *cmds, **kwargs):
-		ret, (stdout, stderr) = await cls._run(*cmds, **kwargs)
-		if ret != 0:
-			msg = ' | '.join(c.shellify() for c in cmds)
-			raise BtrfsError(msg, stderr.decode('utf-8').rstrip())
-		return ret, (stdout, stderr)
 
 	@classmethod
 	async def is_root(cls, path):
