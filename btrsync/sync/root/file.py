@@ -14,6 +14,7 @@ import posixpath
 import uuid
 
 from . import BtrfsRoot
+from . import _exec
 
 from ... import util
 from ... import btrfs
@@ -37,23 +38,46 @@ class _FileRoot(BtrfsRoot):
 		return self.rootpath
 
 
-class FileRecvRoot(_FileRoot):
+class FileRecvRoot(_FileRoot, _exec.ExecBtrfsRoot):
 	"""
 	Btrfs root that saves the send stream to a local file in :meth:`receive`.
 
 	Calling :meth:`send` will raise :exc:`NotImplementedError`.
 	Other methods are delegated to `subroot`, if supplied, or return no-op defaults.
 
-	:param rootpath: directory to save the send streams into
+	:param rootpath: directory to save the send streams into;
+		if :const:`None` will not save any files and `dump_pipe` must be supplied
 	:param subroot: if supplied, delegate :meth:`list` and :meth:`show` to this root
 	:param create_recvpath: if :const:`True`, ensure the `path` passed to :meth:`receive` exists
+	:param namer: function that takes the send stream metadata and returns a file name, if :const:`None` use default
+	:param dump_pipe: a sequence of commands to run in a pipeline and pass the send stream through before saving
+	:param ext: extension to append to saved file names
 	"""
-	def __init__(self, rootpath, *, subroot=None, create_recvpath=False):
+	def __init__(self, rootpath, *, subroot=None, create_recvpath=False,
+	             namer=None, dump_pipe=[], ext=''):
+		if rootpath is None and not dump_pipe:
+			raise ValueError('dump_pipe required for rootpath==None')
 		self.rootpath = rootpath
 		self.subroot = subroot
 		self.create_recvpath = create_recvpath
+		self.namer = namer
+		self.dump_pipe = dump_pipe
+		self.ext = ext
 		self._args = ('rootpath',)
-		self._kwargs = ('subroot', 'create_recvpath')
+		self._kwargs = ('subroot', 'create_recvpath', 'namer', 'dump_pipe', 'ext')
+		if namer is not None:
+			self._namer = namer
+
+	@staticmethod
+	def _namer(meta):
+		try:
+			vols = meta['volumes']
+		except KeyError:
+			vols = ['btrsync-dump']
+		fn = posixpath.basename(vols[0])
+		if len(vols) > 1:
+			fn += '_et-al'
+		return fn + '.btrfs_stream'
 
 	async def list(self, *args, **kwargs):
 		if self.subroot is not None:
@@ -71,20 +95,32 @@ class FileRecvRoot(_FileRoot):
 		"""Not implemented; raises :exc:`NotImplementedError`."""
 		raise NotImplementedError('send() called in receive-only root')
 
-	async def receive(self, flow, path='.', *, meta={}):
+	@staticmethod
+	async def _runclose(coro, f):
 		try:
-			vols = meta['volumes']
-		except KeyError:
-			vols = ['btrsync-dump']
-		fn = posixpath.basename(vols[0])
-		if len(vols) > 1:
-			fn += '_et-al'
-		fn += '.btrfs_stream'
-		odir = os.path.join(self.rootpath, path)
-		if self.create_recvpath:
-			os.makedirs(odir, exist_ok=True)
-		flow.connect_to_fd(open(os.path.join(odir, fn), 'wb', buffering=0))
-		return self._nop()
+			await coro
+		finally:
+			f.close()
+
+	async def receive(self, flow, path='.', *, meta={}):
+		if self.rootpath is None:
+			pin = flow.connect_fd()
+			return self._run_checked(*util.Cmd.pipeline(self.dump_pipe), stdin=pin, stdout=None)
+		else:
+			fn = self._namer(meta) + self.ext
+			odir = os.path.join(self.rootpath, path)
+			if self.create_recvpath:
+				os.makedirs(odir, exist_ok=True)
+			ofile = open(os.path.join(odir, fn), 'wb', buffering=0)
+			if self.dump_pipe:
+				pin = flow.connect_fd()
+				return self._runclose(
+					self._run_checked(*util.Cmd.pipeline(self.dump_pipe), stdin=pin, stdout=ofile),
+					ofile
+				)
+			else:
+				flow.connect_to_fd(ofile)
+				return self._nop()
 
 
 class FileSendRoot(_FileRoot):
