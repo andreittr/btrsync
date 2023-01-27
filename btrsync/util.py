@@ -14,6 +14,7 @@ import os
 import abc
 import shlex
 import asyncio
+import itertools
 
 from collections import deque
 from collections import namedtuple
@@ -188,6 +189,17 @@ class Cmd(namedtuple('Cmd', ['prg', 'args'], defaults=((),))):
 	def seq(cls, seq):
 		"""Parse a sequence of shell command strings into :class:`.Cmd` representations."""
 		return (cls.from_cmdstr(c) for c in seq)
+
+	@classmethod
+	def pipeline(cls, pipe):
+		s = shlex.shlex(pipe, posix=True, punctuation_chars=' ')
+		return (cls.from_cmdstr(' '.join(toks))
+			for toks in itertools.takewhile(bool,
+				([shlex.quote(tok)
+					for tok in itertools.takewhile(lambda x: x != '|', s)]
+				for _ in itertools.count())
+			)
+		)
 
 	def shellify(self):
 		"""Return a properly shell-escaped command string form of `self`."""

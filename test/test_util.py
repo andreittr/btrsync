@@ -18,10 +18,11 @@ class TestCmd(unittest.TestCase):
 	CMDS = (
 		('prg', 'prg', []),
 		('prg arg', 'prg', ['arg']),
-		('prg a b c', 'prg', ['a', 'b', 'c']),
-		('prg     spaced    \tb c', 'prg', ['spaced', 'b', 'c']),
-		('prg\ with\ space    a\ _a \tb c\ q\t', 'prg with space', ['a _a', 'b', 'c q']),
-		('"prg with quotes" a "b quot" c\ q', 'prg with quotes', ['a', 'b quot', 'c q']),
+		('prg a -b c-', 'prg', ['a', '-b', 'c-']),
+		('prg     spaced    \t-b c-', 'prg', ['spaced', '-b', 'c-']),
+		('prg\ with\ space    a\ _a \t-b c\ q-\t', 'prg with space', ['a _a', '-b', 'c q-']),
+		('prg\|with\|pipes    a\ _\|a \t-b c\ \|\ q-\t', 'prg|with|pipes', ['a _|a', '-b', 'c | q-']),
+		('"prg with quotes" a "-b quot" c\ q-', 'prg with quotes', ['a', '-b quot', 'c q-']),
 	)
 	WRAPS = (
 		util.Cmd('prg'),
@@ -47,6 +48,13 @@ class TestCmd(unittest.TestCase):
 		for c, (cs, exprg, exargs) in zip(util.Cmd.seq(x[0] for x in self.CMDS), self.CMDS):
 			self.assertEqual(c.prg, exprg)
 			self.assertEqual(c.args, exargs)
+
+	def test_pipeline(self):
+		self.assertEqual(list(util.Cmd.pipeline('')), [])
+		cstr = [c[0] for c in self.CMDS]
+		for join in ('|', ' |', '| ', ' | '):
+			self.assertEqual(list(util.Cmd.pipeline(join.join(cstr))),
+			                 list(util.Cmd.seq(cstr)))
 
 	def test_shellify(self):
 		for cmds, prg, args in self.CMDS:
