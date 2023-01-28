@@ -31,14 +31,17 @@ Alternatively, if you installed via ``pip``, you can directly run
 
 ``DESTINATION`` must reside on a btrfs filesystem.
 
-If the ``-o`` / ``--output-dir`` option is supplied the send streams will be saved locally instead of being received at ``DESTINATION``.
-
-Additionally, both ``SOURCE`` and ``DESTINATION`` arguments may:
+In addition, both ``SOURCE`` and ``DESTINATION`` arguments may:
 
 - be rsync-like SSH locations (i.e., in ``user@host:path`` form)
 - be full URLs, with ``file://`` and ``ssh://`` as accepted schemas
 
 The location syntax is similar on purpose to that of `rsync <https://rsync.samba.org>`_ and `scp <https://man.openbsd.org/scp.1>`_, and principle of least surprise applies.
+
+Alternatively, btrsync will use ``DESTINATION`` for comparing subvolumes while not actually performing any receive operations for the following options:
+
+- ``-o`` / ``--output-dir`` will save the send streams as files in a local directory.
+- ``-O`` / ``--output-pipe`` option will pass the send stream through a shell pipeline. If ``-o`` is also supplied, the stream is then saved to a file, otherwise it is dumped to stdout.
 
 Examples
 --------
