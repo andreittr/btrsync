@@ -317,7 +317,7 @@ def default_root(protocol):
 	"""
 	Get the default btrfs root used to handle `protocol`.
 
-	:param protocol: btrfs protocol to use; valid values are ``'local'`` and ``'ssh'``
+	:param protocol: btrfs protocol to use; valid values are ``'local'``, ``'ssh'``, ``'file'``, and ``'file-dump'``.
 	:returns: appropriate :class:`btrsync.sync.root.BtrfsRoot` subclass factory for `protocol`
 	:raises ValueError: if protocol is unknown
 	"""

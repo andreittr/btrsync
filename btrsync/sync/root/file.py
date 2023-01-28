@@ -27,10 +27,12 @@ class _FileRoot(BtrfsRoot):
 
 	@classmethod
 	async def get_root(cls, path, **kwargs):
+		"""No-op; call constructor with `path`."""
 		return cls(path, **kwargs), '.'
 
 	@classmethod
 	async def is_root(cls, path):
+		"""No-op; return :const:`True`."""
 		return True
 
 	@property
@@ -136,9 +138,11 @@ class FileSendRoot(_FileRoot):
 		self._args = ('rootpath',)
 
 	async def list(self):
+		"""No-op; return a single volume with path `rootpath` and a random uuid."""
 		return [btrfs.Vol(path=self.rootpath, uuid=str(uuid.uuid4()), received_uuid=None)]
 
 	async def show(self, path='.'):
+		"""No-op; return `rootpath` and empty properties."""
 		return self.rootpath, {}
 
 	async def send(self, *paths, parent=None, clones=[]):

@@ -194,6 +194,7 @@ class Cmd(namedtuple('Cmd', ['prg', 'args'], defaults=((),))):
 
 	@classmethod
 	def pipeline(cls, pipe):
+		"""Parse a shell pipeline into a sequence of :class:`.Cmd` representations."""
 		s = shlex.shlex(pipe, posix=True, punctuation_chars=' ')
 		return (cls.from_cmdstr(' '.join(toks))
 			for toks in itertools.takewhile(bool,

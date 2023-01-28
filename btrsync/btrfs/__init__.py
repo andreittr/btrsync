@@ -25,7 +25,7 @@ class Vol(dict):
 	"""
 	Helper class for manipulating btrfs subvolumes.
 
-	Subvolumes are dicts of (property: value) pairs.
+	Subvolumes are :class:`dict` instances of (property: value) pairs.
 	The properties exposed are those provided by ``btrfs subvolume list``
 	with the addition of computed COW parent and successors.
 	"""
