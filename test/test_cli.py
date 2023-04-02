@@ -90,6 +90,12 @@ class TestSingleMatch(unittest.TestCase):
 		p = 'my/path'
 		self.assertTrue(cli.SingleMatch(p).stop([p]))
 
+	def test_repr(self):
+		p = 'my/path'
+		m = cli.SingleMatch(p)
+		SingleMatch = cli.SingleMatch
+		self.assertEqual(repr(m), repr(eval(repr(m))))
+
 
 class TestUnderGlob(unittest.TestCase):
 	ABS = ('/', '/*', '/path', '/path/', '/path/*')
@@ -158,6 +164,12 @@ class TestUnderGlob(unittest.TestCase):
 
 	def test_stop(self):
 		self.assertFalse(cli.UnderGlob('').stop(object()))
+
+	def test_repr(self):
+		p = 'my/path'
+		m = cli.UnderGlob(p)
+		UnderGlob = cli.UnderGlob
+		self.assertEqual(repr(m), repr(eval(repr(m))))
 
 
 class TestSSHLoc(unittest.TestCase):
