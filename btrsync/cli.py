@@ -113,7 +113,7 @@ class SingleMatch(BaseMatch):
 		self.path = path
 
 	def __repr__(self):
-		return f'SingleMatch({self.path})'
+		return f'SingleMatch({self.path!r})'
 
 	def base_match(self, path):
 		"""Match a single path and return it unaltered."""
@@ -145,7 +145,7 @@ class UnderGlob(BaseMatch):
 		self._re = rx
 
 	def __repr__(self):
-		return f'UnderGlob({self._glob})'
+		return f'UnderGlob({self._glob!r})'
 
 	def base_match(self, path):
 		"""Match everything below the base glob, and return a path relative to it."""
