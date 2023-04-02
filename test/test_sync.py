@@ -9,8 +9,21 @@ import unittest
 
 
 from btrsync import util
+from btrsync.sync.root import BtrfsError
 from btrsync.sync.root.local import LocalRoot
 from btrsync.sync.root.ssh import SSHRoot
+
+
+class TestBtrfsError(unittest.TestCase):
+	def test_args(self):
+		e0 = BtrfsError()
+		self.assertEqual(str(e0), '')
+		e1 = BtrfsError('fail msg')
+		self.assertEqual(str(e1), 'BTRFS operation failed:\n\tfail msg')
+		e2 = BtrfsError('context', 'message')
+		self.assertEqual(str(e2), '"context" failed:\n\tmessage')
+		en = BtrfsError('more', 'args', 'than', 'needed', 'before', 'message')
+		self.assertEqual(str(en), '"more, args, than, needed, before" failed:\n\tmessage')
 
 
 class TestLocalRoot(unittest.TestCase):

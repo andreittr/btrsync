@@ -15,8 +15,12 @@ import abc
 class BtrfsError(Exception):
 	"""Exception class encapsulating btrfs-specific errors."""
 	def __str__(self):
-		ctx, err = self.args
-		return f'"{ctx}" failed:\n\t{err}'
+		if self.args:
+			*ctx, err = self.args
+			s = f'"{", ".join(ctx)}"' if ctx else 'BTRFS operation'
+			return f'{s} failed:\n\t{err}'
+		else:
+			return super().__str__()
 
 
 class BtrfsRoot(abc.ABC):
