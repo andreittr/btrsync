@@ -20,9 +20,9 @@ class TestCmd(unittest.TestCase):
 		('prg arg', 'prg', ['arg']),
 		('prg a -b c-', 'prg', ['a', '-b', 'c-']),
 		('prg     spaced    \t-b c-', 'prg', ['spaced', '-b', 'c-']),
-		('prg\ with\ space    a\ _a \t-b c\ q-\t', 'prg with space', ['a _a', '-b', 'c q-']),
-		('prg\|with\|pipes    a\ _\|a \t-b c\ \|\ q-\t', 'prg|with|pipes', ['a _|a', '-b', 'c | q-']),
-		('"prg with quotes" a "-b quot" c\ q-', 'prg with quotes', ['a', '-b quot', 'c q-']),
+		('prg\\ with\\ space    a\\ _a \t-b c\\ q-\t', 'prg with space', ['a _a', '-b', 'c q-']),
+		('prg\\|with\\|pipes    a\\ _\\|a \t-b c\\ \\|\\ q-\t', 'prg|with|pipes', ['a _|a', '-b', 'c | q-']),
+		('"prg with quotes" a "-b quot" c\\ q-', 'prg with quotes', ['a', '-b quot', 'c q-']),
 	)
 	WRAPS = (
 		util.Cmd('prg'),

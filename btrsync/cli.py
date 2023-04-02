@@ -160,8 +160,8 @@ class SSHLoc:
 	host: str
 	port: str
 
-	SSHRE = re.compile('(?:([^@]*)@)?(.*)')
-	URLRE = re.compile('(?:([^@:]*)@)?(\[[A-Fa-f0-9:]+\]|[^:]*)(?::(.*))?')
+	SSHRE = re.compile(r'(?:([^@]*)@)?(.*)')
+	URLRE = re.compile(r'(?:([^@:]*)@)?(\[[A-Fa-f0-9:]+\]|[^:]*)(?::(.*))?')
 	@classmethod
 	def parse_ssh(cls, locstr):
 		"""Parse a SSH location from a ``user@hostname`` form."""
@@ -191,8 +191,8 @@ class SSHLoc:
 		return dataclasses.asdict(self)
 
 
-SSHLOC_RE = re.compile('^((?:[^/:@]*@)?\[[A-Fa-f0-9:]+\]|[^/:]*):(.*)')
-URLSCHEME_RE = re.compile('^[A-Za-z][A-Za-z0-9+.-]*://(.*)')
+SSHLOC_RE = re.compile(r'^((?:[^/:@]*@)?\[[A-Fa-f0-9:]+\]|[^/:]*):(.*)')
+URLSCHEME_RE = re.compile(r'^[A-Za-z][A-Za-z0-9+.-]*://(.*)')
 
 def parse_root(locstr):
 	"""
