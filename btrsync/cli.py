@@ -138,8 +138,9 @@ class UnderGlob(BaseMatch):
 		if not glob.endswith('*'):
 			glob = posixpath.join(glob, '*')
 		rx = fnmatch.translate(glob)
-		assert(rx.endswith('.*)\\Z'))
-		rx = rx[:-len('.*)\\Z')] + '(.*))\\Z'
+		# \z on Python 3.14 and later, \Z on earlier versions
+		assert(rx.endswith('.*)\\z') or rx.endswith('.*)\\Z'))
+		rx = rx[:-len('.*)\\z')] + '(.*))' + rx[-len('\\z'):]
 		self.under = re.compile(rx)
 		self._glob = glob
 		self._re = rx
