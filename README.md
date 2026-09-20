@@ -69,6 +69,9 @@ See the [API Reference](https://btrsync.readthedocs.io/en/stable/api.html) secti
 - `dev`: pre-release features and fixes
 - `post-VERSION`: maintenance branch for VERSION with backported fixes
 
+The `main` branch, by virtue of tracking the latest tagged release, is regularly force-pushed with rewritten history and is thus inadequate as a base for development.
+All changes should be based on the `dev` branch, which is guaranteed to never be rewritten.
+
 ### Make reference
 Running `make` with no arguments will:
 1. Run the unit tests and (if passing) produce coverage information under `htmlcov/`
