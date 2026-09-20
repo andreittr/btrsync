@@ -6,6 +6,13 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Changelog
 
+## [0.3.1] - 2026-09-20
+
+### Fixed
+- Fix assertion error in Python 3.14+
+- Fix ambiguous regex strings for Python 3.12+
+- Fix string representations of internal data structs
+
 ## [0.3] - 2023-01-28
 **API-BREAKING CHANGES**, see below items and consult up-to-date documentation.
 

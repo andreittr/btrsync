@@ -7,5 +7,5 @@
 
 """Synchronize btrfs subvolumes."""
 
-VERSION = '0.3'
+VERSION = '0.3.1'
 """btrsync version"""
